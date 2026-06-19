@@ -1,187 +1,347 @@
-# Clinical Facial Distress Detection System v2
+# ICU Multimodal Patient Monitoring System
 
-A clinically-inspired real-time facial distress monitoring system for ICU research,
-built on Action Unit (AU) based analysis replacing the original handcrafted feature weights.
+Real-time multimodal patient monitoring system for ICU and clinical research environments.
+
+The system combines:
+
+* Facial Action Unit (AU) analysis
+* Clinical distress indices
+* Head pose estimation
+* Motion analysis
+* Eye gaze estimation (L2CS-Net)
+* Fixation and saccade analysis
+* Eye-contact estimation
+* PERCLOS-based vigilance monitoring
+* Temporal episode detection
+
+into a unified fusion pipeline capable of generating clinically relevant behavioral and distress indicators from a single RGB camera.
 
 ---
 
-## Folder Structure
+# System Architecture
 
+```text
+Video Input
+     │
+     ▼
+MediaPipe Face Mesh
+     │
+ ┌───┴───────────┐
+ │               │
+ ▼               ▼
+Face Pipeline   Eye Pipeline
+ │               │
+ ▼               ▼
+Clinical      Gaze Features
+Features
+ │               │
+ └──────┬────────┘
+        ▼
+  Fusion Layer
+        ▼
+ Clinical Log
+        ▼
+ CSV / JSONL Output
 ```
+
+---
+
+# Project Structure
+
+```text
 facial_distress_v2/
-├── main.py                        # Entry point — orchestrates full pipeline
+│
+├── main.py
 ├── requirements.txt
-├── outputs/                       # Auto-created: CSV + JSONL logs, snapshots
-│
-├── config/
-│   └── settings.py                # ALL constants, thresholds, weights (one place)
-│
-├── landmarks/
-│   ├── landmark_extractor.py      # MediaPipe → typed Landmark objects
-│   └── landmark_groups.py         # Named index lists for all facial regions
 │
 ├── action_units/
-│   └── au_estimator.py            # Geometric AU estimation (15 AUs)
-│
-├── clinical_metrics/
-│   └── indices.py                 # PSPI pain index + 6 composite sub-indices
+│   └── au_estimator.py
 │
 ├── baseline/
-│   └── baseline_manager.py        # Robust median/MAD patient baseline
+│   └── baseline_manager.py
 │
-├── temporal/
-│   └── feature_buffer.py          # Multi-window rolling stats, EMA, peak detection
-│
-├── episodes/
-│   └── episode_detector.py        # State-machine episode detection & logging
-│
-├── tracking/
-│   └── patient_tracker.py         # Multi-face IoU tracking, patient identity lock
+├── clinical_metrics/
+│   └── indices.py
 │
 ├── confidence/
-│   └── confidence_estimator.py    # Per-frame confidence score (0–1)
+│   └── confidence_estimator.py
+│
+├── config/
+│   └── settings.py
 │
 ├── core/
-│   ├── head_pose.py               # solvePnP yaw/pitch/roll estimation
-│   └── motion.py                  # Motion energy, asymmetry, PERCLOS
+│   ├── head_pose.py
+│   └── motion.py
+│
+├── episodes/
+│   └── episode_detector.py
+│
+├── eye/
+│   ├── gaze_estimator.py
+│   └── gaze_tracker.py
+│
+├── l2cs/
+│   ├── model.py
+│   ├── pipeline.py
+│   ├── results.py
+│   └── utils.py
+│
+├── landmarks/
+│   ├── landmark_extractor.py
+│   └── landmark_groups.py
+│
+├── logging_system/
+│   └── distress_logger.py
+│
+├── models/
+│   └── L2CSNet_gaze360.pkl
+│
+├── temporal/
+│   └── feature_buffer.py
+│
+├── tracking/
+│   └── patient_tracker.py
 │
 ├── visualization/
-│   └── overlay.py                 # Rich clinical overlay with AU bars + episodes
+│   └── overlay.py
 │
-└── logging_system/
-    └── distress_logger.py         # Per-frame CSV + per-batch JSONL
+└── outputs/
 ```
 
 ---
 
-## Installation
+# Features
+
+## Facial Analysis
+
+### Action Units
+
+The system estimates:
+
+* AU4 – Brow Lowerer
+* AU5 – Upper Lid Raiser
+* AU6 – Cheek Raiser
+* AU7 – Lid Tightener
+* AU9 – Nose Wrinkler
+* AU10 – Upper Lip Raiser
+* AU12 – Lip Corner Puller
+* AU15 – Lip Corner Depressor
+* AU17 – Chin Raiser
+* AU20 – Lip Stretcher
+* AU23 – Lip Tightener
+* AU24 – Lip Pressor
+* AU25 – Lips Part
+* AU26 – Jaw Drop
+* AU43 – Eye Closure
+
+---
+
+### Clinical Indices
+
+Computed continuously:
+
+* Pain Index
+* Fear Index
+* Fatigue Index
+* Agitation Index
+* Tension Index
+* Respiratory Distress Index
+* Global Distress Score
+
+---
+
+### Head Pose
+
+* Head Yaw
+* Head Pitch
+* Head Roll
+* Pose Deviation
+
+---
+
+### Motion Features
+
+* Motion Energy
+* Facial Asymmetry
+* Temporal Variability
+
+---
+
+## Eye Analysis
+
+The eye pipeline uses L2CS-Net gaze estimation integrated into the facial pipeline.
+
+### Gaze Features
+
+* Gaze Yaw
+* Gaze Pitch
+* Gaze Variance
+
+### Eye Behavior Features
+
+* Fixation Duration
+* Recent Saccades
+* Mean Gaze Speed
+* Maximum Gaze Speed
+* Eye Contact Ratio
+
+### Vigilance Features
+
+* Blink Detection
+* Eye Closure Detection
+* PERCLOS
+
+### Behavioral States
+
+The system automatically classifies:
+
+* Alert
+* Eye Closed
+* Fixation
+* Scanning
+* Drowsy
+
+---
+
+## Temporal Analysis
+
+The temporal engine maintains rolling windows and computes:
+
+* Exponential Moving Averages
+* Variance Metrics
+* Peak Detection
+* Episode Detection
+
+Detected episodes include:
+
+* Pain
+* Agitation
+* Fatigue
+* Fear
+* Eye Closure
+
+---
+
+# Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Requires Python 3.10+.  No CUDA needed — runs on CPU at 20+ FPS.
+Recommended:
+
+```text
+Python 3.10+
+CUDA-capable GPU (optional)
+```
 
 ---
 
-## Running
+# Running
 
 ```bash
-cd facial_distress_v2
 python main.py
 ```
 
-### Keyboard shortcuts
+---
 
-| Key | Action |
-|-----|--------|
-| ESC | Quit session, flush logs |
-| R   | Reset patient baseline |
-| S   | Save snapshot to `outputs/` |
+# Output
+
+## CSV Log
+
+```text
+outputs/distress_log.csv
+```
+
+Contains:
+
+### Facial Features
+
+* AU Intensities
+* Clinical Indices
+* Confidence Scores
+* Episode Flags
+
+### Eye Features
+
+* gaze_yaw
+* gaze_pitch
+* gaze_variance
+* fixation_duration
+* recent_saccades
+* mean_gaze_speed
+* max_gaze_speed
+* eye_contact_ratio
+* behavior_state
 
 ---
 
-## What Changed from v1 → v2
+## JSONL Log
 
-### Removed
-- Handcrafted weighted score: `EAR×10 + PERCLOS×15 + brow×9 + motion×10 + agitation×3 + MAR×8`
-- Simple averaging baseline
-- Global score = ad-hoc weighted sum with magic numbers
+```text
+outputs/distress_log.jsonl
+```
 
-### Added
+Stores structured snapshots of:
 
-| Component | v1 | v2 |
-|-----------|----|----|
-| Feature basis | EAR, MAR, brow dist, motion energy | 15 Action Units (geometric) |
-| Scoring | Manual weights (fixed) | PSPI-inspired clinical formula |
-| Baseline | Running mean (30 frames) | Robust median + MAD (30 s) |
-| Sub-indices | None | Pain, Fear, Fatigue, Agitation, Tension, Respiratory |
-| Temporal analysis | None | 10/30/60 s windows, EMA, peak detection |
-| Episodes | None | State-machine: Pain, Agitation, Eye Closure, Fatigue, Fear |
-| Multi-face | First face only | IoU patient tracking, identity lock |
-| Confidence | None | Per-frame score (landmark quality × pose × tracking × visibility) |
-| Logging | None | Per-frame CSV + JSONL |
+* AU values
+* Clinical metrics
+* Confidence metrics
+* Active episodes
+* Completed episodes
 
 ---
 
-## Output Format
+# Current Fusion Schema
 
-### `outputs/distress_log.csv`
+The final fusion model currently combines:
 
+```text
+Facial Features
++
+Clinical Features
++
+Head Pose Features
++
+Eye Gaze Features
++
+Behavioral Features
++
+Temporal Episode Features
 ```
-timestamp,frame,global_distress,confidence,pain_index,fear_index,fatigue_index,
-agitation_index,tension_index,respiratory_index,eye_closure_index,
-au4,au5,...,au43,ear_avg,mar,active_episodes,baseline_ready
-```
 
-### `outputs/distress_log.jsonl`
-
-One JSON object every 30 frames:
-```json
-{
-  "timestamp": 1749120345.23,
-  "frame": 300,
-  "au": {"au4": 0.42, "au6": 0.18, ...},
-  "clinical": {"pain_index": 45.1, "global_distress": 38.2, ...},
-  "confidence": {"overall": 0.91, ...},
-  "active_episodes": [],
-  "completed_episodes": [{"type": "PAIN", "duration_s": 3.4, ...}],
-  "baseline_ready": true
-}
-```
+into a single multimodal representation.
 
 ---
 
-## Clinical Rationale
+# Research Applications
 
-### Action Unit Basis
-
-**AU4 (Brow Lowerer)** — Corrugator supercilii.
-The single most reliable pain indicator (Prkachin, 1992; Pain).
-Geometrically estimated as normalised brow-to-upper-eyelid distance.
-
-**AU6 (Cheek Raiser)** — Orbicularis oculi (orbital part).
-Raises cheeks, narrows palpebral fissure from below.
-Distinguishes genuine pain from voluntary grimacing.
-
-**AU7 (Lid Tightener)** — Orbicularis oculi (palpebral part).
-Tightens upper eyelid; characteristic of pain and concentration.
-
-**AU9 (Nose Wrinkler)** — Levator labii superioris alaeque nasi.
-Estimated from nostril width relative to IOD.
-Present in disgust and pain (Ekman, 1978).
-
-**AU10 (Upper Lip Raiser)** — Levator labii superioris.
-Shortens philtrum; accompanies nausea and pain.
-
-**AU43 (Eyes Closed)** — Inverse of Eye Aspect Ratio.
-Sustained closure signals pain-driven withdrawal (PSPI component) or fatigue.
-
-### PSPI Formula
-
-```
-Pain Index = AU4 + max(AU6, AU7) + max(AU9, AU10) + AU43
-```
-
-Normalised to 0–100.  Based on Prkachin & Solomon (2008):
-*"The structure, reliability and validity of pain expression."*
-Pain Research & Management 13(6):645–655.
-
-### Confidence Score
-
-Uses geometric mean of four sub-factors to strongly penalise any single
-failure mode (e.g., extreme head pose alone should halve confidence):
-
-```
-Confidence = lm_quality^0.30 × pose_quality^0.30 × tracking^0.25 × visibility^0.15
-```
+* ICU Patient Monitoring
+* Non-Verbal Pain Assessment
+* Sedation Monitoring
+* Fatigue Detection
+* Vigilance Monitoring
+* Human Behavior Analysis
+* Clinical Decision Support
 
 ---
 
-## Configuration
+# Future Work
 
-All thresholds are in `config/settings.py` — a single frozen dataclass.
-No magic numbers elsewhere in the codebase.
+Planned extensions:
 
-To tune the system for a different patient population or camera setup,
-edit only `config/settings.py`.
+* Audio Distress Analysis
+* Multimodal Fusion Model Training
+* XGBoost-Based Patient State Classification
+* Temporal Transformer Models
+* 3D Stereo Vision Integration
+* Bed Fall Risk Detection
+* Web Dashboard
+* Mobile Application
+* Jetson Deployment
+
+---
+
+# License
+
+Research and educational use.
