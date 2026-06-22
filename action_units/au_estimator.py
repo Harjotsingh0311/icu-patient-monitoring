@@ -160,6 +160,7 @@ def estimate_aus(
     # Lower ratio → brows pressed downward.
     # Clinical: the single most reliable pain indicator (Prkachin 1992).
     # ────────────────────────────────────────────────────────────────────
+    
     left_brow  = _region(LEFT_BROW)
     right_brow = _region(RIGHT_BROW)
 
@@ -168,10 +169,17 @@ def estimate_aus(
     right_brow_y = float(np.mean([lm.y for lm in right_brow]))
     left_eye_top_y  = left_eye[1].y   # upper lid outer
     right_eye_top_y = right_eye[1].y
+    
 
     left_brow_dist  = (left_eye_top_y  - left_brow_y)  / iod
     right_brow_dist = (right_eye_top_y - right_brow_y) / iod
     brow_dist_avg   = (left_brow_dist + right_brow_dist) / 2.0
+
+    print(
+    f"BROW_DIST={brow_dist_avg:.3f} "
+    f"L={left_brow_dist:.3f} "
+    f"R={right_brow_dist:.3f}"
+    )
 
     au.brow_distance_ratio = brow_dist_avg
     # AU4 increases as brow-eye gap SHRINKS below normal (invert the scale)

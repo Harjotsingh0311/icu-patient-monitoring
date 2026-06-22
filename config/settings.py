@@ -182,11 +182,11 @@ class TemporalConfig:
 # ──────────────────────────────────────────────
 @dataclass(frozen=True)
 class EpisodeConfig:
-    pain_threshold: float = 45.0       # global score to trigger pain episode
-    agitation_threshold: float = 40.0
-    fatigue_threshold: float = 50.0
+    pain_threshold: float = 70.0       # global score to trigger pain episode
+    agitation_threshold: float = 60.0
+    fatigue_threshold: float = 70.0
     eye_closure_threshold: float = 0.70  # PERCLOS
-    min_episode_frames: int = 15       # avoid single-frame spikes
+    min_episode_frames: int = 45       # avoid single-frame spikes
     cooldown_frames: int = 60          # frames before new episode can start
 
 

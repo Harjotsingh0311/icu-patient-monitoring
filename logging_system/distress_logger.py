@@ -80,6 +80,7 @@ class DistressLogger:
 
         print(f"[Logger] CSV  → {self._csv_path}")
         print(f"[Logger] JSONL → {self._json_path}")
+    
 
     # ──────────────────────────────────────────────────────────────────────
     # Public API
@@ -205,6 +206,7 @@ class DistressLogger:
             self._json_file.write(json.dumps(record) + "\n")
             self._csv_file.flush()
             self._json_file.flush()
+    
 
     def close(self) -> None:
         """Flush and close all file handles."""

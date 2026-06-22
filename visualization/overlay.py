@@ -46,6 +46,7 @@ class DistressOverlay:
     def __init__(self) -> None:
         self._cfg = CFG.visualization
         self._font = cv2.FONT_HERSHEY_SIMPLEX
+    
 
     # ──────────────────────────────────────────────────────────────────────
     # Public entry point
@@ -53,19 +54,24 @@ class DistressOverlay:
 
     def render(
         self,
-        frame: np.ndarray,
-        au: AUFrame,
-        ci: ClinicalIndices,
-        confidence: ConfidenceResult,
-        active_episodes: List[Episode],
-        baseline_ready: bool,
-        baseline_progress: float,
-        frame_idx: int,
+    frame: np.ndarray,
+    au: AUFrame,
+    ci: ClinicalIndices,
+    confidence: ConfidenceResult,
+    active_episodes: List[Episode],
+    baseline_ready: bool,
+    baseline_progress: float,
+    frame_idx: int,
+
+    behavior_state: str = "alert",
+    gaze_yaw: float = 0.0,
+    gaze_pitch: float = 0.0,
+    gaze_data: dict | None = None,
     ) -> None:
         """Draw the full overlay onto `frame` in-place."""
         c = self._cfg
         panel_w = c.panel_width
-        panel_h = min(frame.shape[0], 660)
+        panel_h = frame.shape[0] -10
 
         # Semi-transparent background panel
         overlay = frame.copy()
@@ -149,6 +155,64 @@ class DistressOverlay:
 
         y += 4
 
+
+        self._section(frame, "EYE ANALYSIS", y)
+        y += lh
+
+        self._text(
+            frame,
+            f"State: {behavior_state.upper()}",
+            14,
+            y,
+            (120, 220, 255),
+            scale=0.42
+        )
+        y += lh
+
+        self._text(
+            frame,
+            f"Yaw: {gaze_yaw:.2f}",
+            14,
+            y,
+            (180,180,180),
+            scale=0.40
+        )
+        y += lh
+
+        self._text(
+            frame,
+            f"Pitch: {gaze_pitch:.2f}",
+            14,
+            y,
+            (180,180,180),
+            scale=0.40
+        )
+        y += lh
+       
+
+        
+        summary = self._clinical_summary(
+            ci,
+            behavior_state,
+            active_episodes,
+        )
+        
+
+
+        self._section(frame, "CLINICAL SUMMARY", y)
+        y += lh
+
+        for item in summary:
+            self._text(
+                frame,
+                f"- {item}",
+                14,
+                y,
+                (220, 220, 220),
+                scale=0.40,
+            )
+            y += lh
+
         # ── Baseline status ───────────────────────────────────────────────
         if baseline_ready:
             bline_text = "Baseline: READY"
@@ -222,7 +286,50 @@ class DistressOverlay:
 
         # Numeric value
         self._text(frame, val_suffix, val_x, y, c.color_text, scale=0.38)
+    def _clinical_summary(
+        self,
+        ci,
+        behavior_state,
+        active_episodes,
+    ):
+        summary = []
 
+        if ci.pain_index > 70:
+            summary.append("Pain-related facial activity")
+
+        if ci.fatigue_index > 70:
+            summary.append("Elevated fatigue indicators")
+
+        if ci.fear_index > 70:
+            summary.append("Fear/anxiety indicators")
+
+        if ci.agitation_index > 70:
+            summary.append("Agitation detected")
+
+        if behavior_state == "eye_closed":
+            summary.append("Eye closure detected")
+
+        elif behavior_state == "drowsy":
+            summary.append("Possible drowsiness")
+
+        elif behavior_state == "fixation":
+            summary.append("Prolonged fixation observed")
+
+        elif behavior_state == "scanning":
+            summary.append("Frequent gaze scanning")
+
+        if len(active_episodes) > 0:
+            summary.append(
+                f"{len(active_episodes)} active episode(s)"
+            )
+
+        if not summary:
+            summary.append("No significant distress indicators")
+
+        return summary[:3]
+
+    
+    
     def _severity_color(self, score: float) -> tuple:
         """BGR colour based on score 0-100."""
         if score < 20:

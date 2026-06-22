@@ -118,6 +118,7 @@ def main() -> None:
     gaze_yaw = 0.0
     gaze_pitch = 0.0
     gaze_data = None
+    closed_frames = 0
 
     print("[INFO] Starting distress monitoring. Press ESC to quit.")
     print(f"[INFO] Baseline collection: {cfg.baseline.collection_seconds}s")
@@ -128,6 +129,10 @@ def main() -> None:
         if not ret:
             print("[WARN] Frame capture failed — skipping.")
             continue
+        behavior_state = "unknown"
+        gaze_yaw = 0.0
+        gaze_pitch = 0.0
+        gaze_data = {}
 
         frame_idx += 1
         h, w = frame.shape[:2]
@@ -207,12 +212,19 @@ def main() -> None:
 
                 # ── Eye closure & PERCLOS ─────────────────────────────────
                 eye_closed = au.ear_avg < _EAR_CLOSURE_THRESHOLD
+                if eye_closed:
+                    closed_frames += 1
+                else:
+                    closed_frames = 0
                 eye_closed_history.append(int(eye_closed))
                 perclos = compute_perclos(eye_closed_history)
 
+
                 behavior_state = "alert"
 
-                if eye_closed:
+                
+
+                if closed_frames > 30:
                     behavior_state = "eye_closed"
 
                 elif perclos > 40:
@@ -221,7 +233,11 @@ def main() -> None:
                 elif gaze_data and gaze_data["fixation_duration"] > 2:
                     behavior_state = "fixation"
 
-                elif gaze_data and gaze_data["recent_saccades"] > 15:
+                elif (
+                    gaze_data
+                    and closed_frames == 0
+                    and gaze_data["recent_saccades"] > 18
+                ):
                     behavior_state = "scanning"
 
                 # ── Temporal buffer push ──────────────────────────────────
@@ -310,9 +326,15 @@ def main() -> None:
             ci=ci,
             confidence=confidence,
             active_episodes=ep_detector.active_episodes,
+
             baseline_ready=baseline.ready,
             baseline_progress=baseline.progress,
             frame_idx=frame_idx,
+
+            behavior_state=behavior_state,
+            gaze_yaw=gaze_yaw,
+            gaze_pitch=gaze_pitch,
+            gaze_data=gaze_data,
         )
 
         # ── FPS counter ───────────────────────────────────────────────────
@@ -323,25 +345,7 @@ def main() -> None:
             cv2.FONT_HERSHEY_SIMPLEX, 0.40, (80, 80, 80), 1
         )
 
-        cv2.putText(
-            frame,
-            f"Gaze Y:{gaze_yaw:.2f}",
-            (10, 450),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0,255,0),
-            2
-        )
-
-        cv2.putText(
-            frame,
-            f"Gaze P:{gaze_pitch:.2f}",
-            (10, 480),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0,255,0),
-            2
-        )
+        
 
         cv2.imshow("Clinical Distress Monitor", frame)
 
