@@ -4,8 +4,8 @@ from pathlib import Path
 WINDOW_SIZE = 150      # 5 sec @ 30 FPS
 WINDOW_STEP = 75       # 50% overlap
 
-INPUT_DIR = Path("datasets/raw_logs")
-OUTPUT_DIR = Path("datasets/processed")
+INPUT_DIR = Path("dataset/raw_logs")
+OUTPUT_DIR = Path("dataset/processed")
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

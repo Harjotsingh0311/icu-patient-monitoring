@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-INPUT_DIR = Path("datasets/processed")
+INPUT_DIR = Path("dataset/processed")
 
 OUTPUT_FILE = INPUT_DIR / "visual_dataset.csv"
 
