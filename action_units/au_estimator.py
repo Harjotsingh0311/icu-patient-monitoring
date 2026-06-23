@@ -175,12 +175,6 @@ def estimate_aus(
     right_brow_dist = (right_eye_top_y - right_brow_y) / iod
     brow_dist_avg   = (left_brow_dist + right_brow_dist) / 2.0
 
-    print(
-    f"BROW_DIST={brow_dist_avg:.3f} "
-    f"L={left_brow_dist:.3f} "
-    f"R={right_brow_dist:.3f}"
-    )
-
     au.brow_distance_ratio = brow_dist_avg
     # AU4 increases as brow-eye gap SHRINKS below normal (invert the scale)
     au.au4 = _scale(cfg.au4_high - brow_dist_avg, 0.0, cfg.au4_high - cfg.au4_low)
@@ -219,10 +213,9 @@ def estimate_aus(
     nostril_width   = abs(nostril_right_x - nostril_left_x) / iod
 
     # Reference: internostril width at rest ≈ 0.20–0.25 × IOD
-    NOSTRIL_NEUTRAL = 0.22
+    NOSTRIL_NEUTRAL = 0.30
     au9_raw = max(0.0, nostril_width - NOSTRIL_NEUTRAL)
     au.au9 = _scale(au9_raw, cfg.au9_low, cfg.au9_high)
-
     # ────────────────────────────────────────────────────────────────────
     # AU10  Upper Lip Raiser
     # Distance from nose base to upper lip, normalised.  Decreases when

@@ -39,8 +39,8 @@ class FaceMeshConfig:
 @dataclass(frozen=True)
 class AUConfig:
     # AU4  Brow Lowerer: brow-to-eye ratio; lower = more raised/pressed
-    au4_low: float = 0.20
-    au4_high: float = 0.50
+    au4_low: float = 0.10
+    au4_high: float = 0.30
 
     # AU5  Upper Lid Raiser: EAR threshold; higher EAR = lid raised
     au5_low: float = 0.20
