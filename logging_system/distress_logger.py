@@ -25,6 +25,7 @@ import os
 import time
 from pathlib import Path
 from typing import List
+from backend_sender import send_to_backend
 
 from action_units.au_estimator import AUFrame
 from clinical_metrics.indices import ClinicalIndices
@@ -189,6 +190,42 @@ class DistressLogger:
 
             "baseline_ready": int(baseline_ready),
         }
+        backend_payload = {
+            "timestamp_unix": ts,
+
+            "global_distress": row["global_distress"],
+
+            "pain_index": row["pain_index"],
+            "fear_index": row["fear_index"],
+            "fatigue_index": row["fatigue_index"],
+            "agitation_index": row["agitation_index"],
+            "tension_index": row["tension_index"],
+            "respiratory_index": row["respiratory_index"],
+
+            "behavior_state": row["behavior_state"],
+
+            "gaze_yaw": row["gaze_yaw"],
+            "gaze_pitch": row["gaze_pitch"],
+
+            "gaze_variance": row["gaze_variance"],
+            "fixation_duration": row["fixation_duration"],
+
+            "recent_saccades": row["recent_saccades"],
+
+            "eye_contact_ratio": row["eye_contact_ratio"],
+
+            "episode_pain": row["episode_pain"],
+            "episode_agitation": row["episode_agitation"],
+            "episode_fatigue": row["episode_fatigue"],
+            "episode_fear": row["episode_fear"],
+            "episode_eye_closure": row["episode_eye_closure"],
+
+            "face_confidence": row["face_confidence"]
+        }
+
+        send_to_backend(
+            backend_payload
+        )
         self._csv_writer.writerow(row)
 
         # ── JSONL flush every N frames ────────────────────────────────────
