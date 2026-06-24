@@ -262,6 +262,7 @@ def main() -> None:
                     asymmetry=asymmetry,
                     au26_variance=au26_var,
                     jaw_rhythm=jaw_rhythm,
+                    baseline=baseline.baseline if baseline.ready else None,
                 )
 
                 # Push clinical indices into temporal buffer
