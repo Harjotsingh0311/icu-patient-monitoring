@@ -1,20 +1,20 @@
 import requests
 
-BACKEND_URL = "http://172.20.10.3:8000/face"
+ENABLE_BACKEND = False
 
+BACKEND_URL = "http://127.0.0.1:8000/face"
 
-def send_to_backend(face_payload):
+def send_to_backend(payload):
+
+    if not ENABLE_BACKEND:
+        return
 
     try:
-
         requests.post(
             BACKEND_URL,
-            json=face_payload,
-            timeout=1
+            json=payload,
+            timeout=0.1
         )
 
     except Exception as e:
-
-        print(
-            f"[Backend Error] {e}"
-        )
+        print(f"[Backend Error] {e}")

@@ -268,8 +268,7 @@ def estimate_aus(
 
     cheek_gap_avg = (left_cheek_gap + right_cheek_gap) / 2.0
 
-    print(f"CHEEK_GAP={cheek_gap_avg:.3f}")
-
+    
     au.au6 = _scale(
         cfg.au6_high - cheek_gap_avg,
         0.0,

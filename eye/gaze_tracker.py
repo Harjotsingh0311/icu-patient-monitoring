@@ -26,12 +26,39 @@ class GazeTracker:
         self.gaze_speed_history = deque(
         maxlen=window_size
         )
+        
 
-    def update(self, yaw, pitch):
+    def update(self, yaw, pitch,eye_closed=False):
 
         if yaw is None:
             return None
         
+
+        if eye_closed:
+
+            self.prev_yaw = None
+            self.prev_pitch = None
+
+            self.saccade_window.append(0)
+
+            return {
+                "yaw_variance": 0,
+                "pitch_variance": 0,
+                "gaze_variance": 0,
+                "fixation_duration": (
+                    self.fixation_frames / 30.0
+                ),
+                "saccade_count": self.saccade_count,
+                "recent_saccades": sum(
+                    self.saccade_window
+                ),
+                "mean_gaze_speed": 0,
+                "max_gaze_speed": 0,
+                "eye_contact_ratio": (
+                    self.eye_contact_frames /
+                    max(self.valid_gaze_frames, 1)
+                )
+            }
         self.valid_gaze_frames += 1
         EYE_CONTACT_YAW = 0.25
         EYE_CONTACT_PITCH = 0.25

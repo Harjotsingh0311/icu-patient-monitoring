@@ -105,18 +105,7 @@ def compute_clinical_indices(
     )
 
     ci.pain_index = float(np.clip(raw_pain / cfg_pain.max_raw * 100.0, 0.0, 100.0))
-    print(
-        f"AU4={au4_val:.2f} "
-        f"AU67={au67_val:.2f} "
-        f"AU910={au910_val:.2f} "
-        f"AU43={au43_val:.2f}"
-    )
-
-    print(
-        f"RAW_PAIN={raw_pain:.2f} "
-        f"MAX_RAW={cfg_pain.max_raw:.2f} "
-        f"PAIN_INDEX={ci.pain_index:.1f}"
-    )
+    
 
     # ── Fear / Anxiety Index ─────────────────────────────────────────────
     fw = cfg_clin.fear_weights

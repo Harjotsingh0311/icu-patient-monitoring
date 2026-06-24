@@ -185,8 +185,11 @@ def main() -> None:
 
                         gaze_data = gaze_tracker.update(
                             gaze_yaw,
-                            gaze_pitch
+                            gaze_pitch,
+                            eye_closed
+                            
                         )
+                        
                         
 
                     except Exception as e:
@@ -212,10 +215,19 @@ def main() -> None:
 
                 # ── Eye closure & PERCLOS ─────────────────────────────────
                 eye_closed = au.ear_avg < _EAR_CLOSURE_THRESHOLD
+                scanning_cooldown = 0
                 if eye_closed:
+
                     closed_frames += 1
+
+                    scanning_cooldown = 60
+
                 else:
+
                     closed_frames = 0
+
+                    if scanning_cooldown > 0:
+                        scanning_cooldown -= 1
                 eye_closed_history.append(int(eye_closed))
                 perclos = compute_perclos(eye_closed_history)
 
@@ -236,6 +248,7 @@ def main() -> None:
                 elif (
                     gaze_data
                     and closed_frames == 0
+                    and scanning_cooldown == 0
                     and gaze_data["recent_saccades"] > 18
                 ):
                     behavior_state = "scanning"
