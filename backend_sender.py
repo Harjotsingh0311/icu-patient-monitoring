@@ -1,8 +1,10 @@
 import requests
 
-ENABLE_BACKEND = False
+ENABLE_BACKEND = True
 
-BACKEND_URL = "http://127.0.0.1:8000/face"
+BACKEND_URL = "http://172.20.10.3:8000/face"
+
+session = requests.Session()
 
 def send_to_backend(payload):
 
@@ -10,10 +12,10 @@ def send_to_backend(payload):
         return
 
     try:
-        requests.post(
+        response = session.post(
             BACKEND_URL,
             json=payload,
-            timeout=0.1
+            timeout=1.0
         )
 
     except Exception as e:

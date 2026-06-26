@@ -26,6 +26,7 @@ from collections import deque
 import cv2
 import mediapipe as mp
 import numpy as np
+import time
 
 # ── Project modules ──────────────────────────────────────────────────────
 from config.settings import CFG
@@ -64,7 +65,7 @@ from eye.gaze_tracker import GazeTracker
 # ──────────────────────────────────────────────────────────────────────────
 # Constants / Sentinel defaults
 # ──────────────────────────────────────────────────────────────────────────
-_EAR_CLOSURE_THRESHOLD = 0.18    # EAR below this = eye considered closed
+_EAR_CLOSURE_THRESHOLD = 0.18   # EAR below this = eye considered closed
 
 
 def main() -> None:
@@ -119,6 +120,8 @@ def main() -> None:
     gaze_pitch = 0.0
     gaze_data = None
     closed_frames = 0
+    scanning_cooldown = 0
+    eye_closed_start_time = None
 
     print("[INFO] Starting distress monitoring. Press ESC to quit.")
     print(f"[INFO] Baseline collection: {cfg.baseline.collection_seconds}s")
@@ -132,7 +135,7 @@ def main() -> None:
         behavior_state = "unknown"
         gaze_yaw = 0.0
         gaze_pitch = 0.0
-        gaze_data = {}
+        gaze_data = None
 
         frame_idx += 1
         h, w = frame.shape[:2]
@@ -175,26 +178,12 @@ def main() -> None:
                     x_min:x_max
                 ]
 
-                if face_crop.size > 0:
+                
 
-                    try:
-
-                        gaze_yaw, gaze_pitch = (
-                            gaze_estimator.estimate(face_crop)
-                        )
-
-                        gaze_data = gaze_tracker.update(
-                            gaze_yaw,
-                            gaze_pitch,
-                            eye_closed
-                            
-                        )
-                        
+                
                         
 
-                    except Exception as e:
-
-                        print("L2CS Error:", e)
+                    
 
                 # ── IOD ─────────────────────────────────────────────────
                 iod = interocular_distance(patient_landmarks)
@@ -214,45 +203,67 @@ def main() -> None:
                 asymmetry = compute_facial_asymmetry(patient_landmarks)
 
                 # ── Eye closure & PERCLOS ─────────────────────────────────
+                # ── Eye closure & PERCLOS ─────────────────────────────────
+
                 eye_closed = au.ear_avg < _EAR_CLOSURE_THRESHOLD
-                scanning_cooldown = 0
+
+                
+
                 if eye_closed:
 
-                    closed_frames += 1
+                    if eye_closed_start_time is None:
+                        eye_closed_start_time = time.time()
 
+                    eye_closed_duration = time.time() - eye_closed_start_time
                     scanning_cooldown = 60
 
                 else:
 
-                    closed_frames = 0
+                    eye_closed_start_time = None
+                    eye_closed_duration = 0.0
 
                     if scanning_cooldown > 0:
                         scanning_cooldown -= 1
+
                 eye_closed_history.append(int(eye_closed))
                 perclos = compute_perclos(eye_closed_history)
 
+                # ── Gaze ──────────────────────────────────────────────────
+
+                gaze_yaw = 0.0
+                gaze_pitch = 0.0
+                gaze_data = None
+
+                if face_crop.size > 0:
+
+                    gaze_yaw, gaze_pitch = gaze_estimator.estimate(face_crop)
+
+                    gaze_data = gaze_tracker.update(
+                        gaze_yaw,
+                        gaze_pitch,
+                        eye_closed,
+                    )
+
+                # ── Behaviour State ───────────────────────────────────────
 
                 behavior_state = "alert"
 
-                
-
-                if closed_frames > 30:
+                if eye_closed_duration >= 1.0:
                     behavior_state = "eye_closed"
 
-                elif perclos > 40:
+                elif perclos >= 0.40:
                     behavior_state = "drowsy"
 
-                elif gaze_data and gaze_data["fixation_duration"] > 2:
+                elif gaze_data is not None and gaze_data["fixation_duration"] > 2:
                     behavior_state = "fixation"
 
                 elif (
-                    gaze_data
-                    and closed_frames == 0
+                    gaze_data is not None
+                    and not eye_closed
                     and scanning_cooldown == 0
                     and gaze_data["recent_saccades"] > 18
                 ):
                     behavior_state = "scanning"
-
                 # ── Temporal buffer push ──────────────────────────────────
                 au_dict = au.as_dict()
                 au_dict["perclos"]      = perclos
@@ -265,6 +276,7 @@ def main() -> None:
                 # ── Baseline update ───────────────────────────────────────
                 if not baseline.ready:
                     baseline.update(au_dict)
+                    
 
                 # ── Clinical indices ──────────────────────────────────────
                 ci = compute_clinical_indices(
@@ -332,6 +344,8 @@ def main() -> None:
 
         else:
             previous_landmarks = None
+        
+        
 
         # ── Clinical overlay ──────────────────────────────────────────────
         overlay.render(
