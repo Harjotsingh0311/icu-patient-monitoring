@@ -228,7 +228,7 @@ Detected episodes include:
 
 ```bash
 git clone <repository-url>
-cd facial_distress_v2
+cd <your folder>
 ```
 
 ---
