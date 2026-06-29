@@ -224,26 +224,98 @@ Detected episodes include:
 
 # Installation
 
+## 1. Clone the Repository
+
 ```bash
-pip install -r requirements.txt
-```
-
-Recommended:
-
-```text
-Python 3.10+
-CUDA-capable GPU (optional)
+git clone <repository-url>
+cd facial_distress_v2
 ```
 
 ---
 
-# Running
+## 2. Create a Python Environment (Recommended)
+
+```bash
+conda create -n gaze python=3.10
+conda activate gaze
+```
+
+Alternatively, you may use a standard Python virtual environment.
+
+---
+
+## 3. Install Python Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 4. Install L2CS-Net
+
+This project uses a locally bundled copy of **L2CS-Net** for appearance-based gaze estimation.
+
+Install the package in editable mode from the repository root:
+
+```bash
+pip install -e ./L2CS-Net
+```
+
+or
+
+```bash
+cd L2CS-Net
+pip install -e .
+cd ..
+```
+
+This makes the `l2cs` package available to the main pipeline while allowing local modifications without reinstalling.
+
+---
+
+## 5. Download the L2CS Pretrained Model
+
+Download the pretrained **Gaze360** weights (`L2CSNet_gaze360.pkl`) and place them inside:
+
+```text
+models/
+└── L2CSNet_gaze360.pkl
+```
+
+Update the model path in the project configuration if the weights are stored in a different location.
+
+---
+
+## 6. Verify Installation
+
+The following command should execute without import errors:
 
 ```bash
 python main.py
 ```
 
+If successful, the application will initialize:
+
+* MediaPipe Face Mesh
+* L2CS-Net Gaze Estimator
+* Clinical Feature Extraction
+* Behavioral Analysis
+* Temporal Episode Detection
+
+and begin real-time monitoring from the default camera.
+
 ---
+
+### System Requirements
+
+* Python 3.10+
+* Windows/Linux
+* CUDA-capable GPU (optional, recommended for higher FPS)
+* Webcam or RGB Camera
+
+---
+
 
 # Output
 
