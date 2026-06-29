@@ -39,6 +39,8 @@ from landmarks.landmark_groups import (
     JAW_LOWER, LEFT_EYE_OUTER_IDX, RIGHT_EYE_OUTER_IDX,
 )
 
+from backend_sender import send_frame_to_backend
+
 from action_units.au_estimator import estimate_aus, AUFrame
 
 from clinical_metrics.indices import compute_clinical_indices, ClinicalIndices
@@ -372,7 +374,8 @@ def main() -> None:
             (w - 120, h - 10),
             cv2.FONT_HERSHEY_SIMPLEX, 0.40, (80, 80, 80), 1
         )
-
+        
+        send_frame_to_backend(frame)
         
 
         cv2.imshow("Clinical Distress Monitor", frame)

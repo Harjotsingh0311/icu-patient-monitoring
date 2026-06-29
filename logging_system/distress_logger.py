@@ -225,8 +225,7 @@ class DistressLogger:
         }
         import json
 
-        print("=" * 80)
-        print(json.dumps(backend_payload, indent=2))
+        
         send_to_backend(
             backend_payload
         )
