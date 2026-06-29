@@ -191,6 +191,7 @@ class DistressLogger:
             "baseline_ready": int(baseline_ready),
         }
         backend_payload = {
+            "patient_id": "P011",
             "timestamp_unix": ts,
 
             "global_distress": row["global_distress"],
@@ -222,7 +223,10 @@ class DistressLogger:
 
             "face_confidence": row["face_confidence"]
         }
+        import json
 
+        print("=" * 80)
+        print(json.dumps(backend_payload, indent=2))
         send_to_backend(
             backend_payload
         )
