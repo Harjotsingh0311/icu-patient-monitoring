@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Conda
+conda-meta/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Runtime outputs
+outputs/
+*.csv
+*.jsonl
+
+# Research / training (not needed for deployment)
+dataset/
+experiments/
+training/
+xai/
+
+# Documentation
+README.md
+
+# OS
+.DS_Store
+Thumbs.db

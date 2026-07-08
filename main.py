@@ -62,6 +62,8 @@ from visualization.overlay import DistressOverlay, draw_landmark_dots
 from logging_system.distress_logger import DistressLogger
 from eye.gaze_estimator import GazeEstimator
 from eye.gaze_tracker import GazeTracker
+from camera.camera_stream import CameraStream
+from utils.profiler import PipelineProfiler
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -85,17 +87,20 @@ def main() -> None:
 
     # ── Camera ───────────────────────────────────────────────────────────
     cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH,  cfg.camera.frame_width)
+
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.camera.frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.camera.frame_height)
-    cap.set(cv2.CAP_PROP_FPS,          cfg.camera.target_fps)
+    cap.set(cv2.CAP_PROP_FPS, cfg.camera.target_fps)
 
     if not cap.isOpened():
-        print("[ERROR] Cannot open camera. Exiting.")
+        print("[ERROR] Cannot open camera.")
         sys.exit(1)
 
     actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
     print(f"[INFO] Camera {actual_w}×{actual_h} @ {cfg.camera.target_fps} fps")
+
 
     # ── Pipeline components ───────────────────────────────────────────────
     tracker     = PatientTracker(actual_w, actual_h)
@@ -107,6 +112,7 @@ def main() -> None:
     logger      = DistressLogger()
     gaze_estimator = GazeEstimator()
     gaze_tracker = GazeTracker()
+    profiler = PipelineProfiler()
 
     # ── State variables ───────────────────────────────────────────────────
     frame_idx: int = 0
@@ -144,7 +150,14 @@ def main() -> None:
         frame_area = max(w * h, 1)
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        t0 = time.perf_counter()
+
         results = face_mesh.process(rgb)
+
+        profiler.add(
+            "FaceMesh",
+            time.perf_counter() - t0,
+        )
 
         patient_landmarks: LandmarkArray | None = None
 
@@ -366,6 +379,10 @@ def main() -> None:
             gaze_pitch=gaze_pitch,
             gaze_data=gaze_data,
         )
+
+        if frame_idx % 100 == 0:
+            print("REPORT CALLED")
+            profiler.report()
 
         # ── FPS counter ───────────────────────────────────────────────────
         cv2.putText(

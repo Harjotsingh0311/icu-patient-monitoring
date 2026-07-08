@@ -1,53 +1,15 @@
-# ==========================
-# Core
-# ==========================
-numpy==2.2.6
-scipy==1.15.3
-pandas==2.3.3
-
-# ==========================
-# Computer Vision
-# ==========================
-opencv-python==4.13.0.92
-opencv-contrib-python==4.13.0.92
-mediapipe==0.10.14
-Pillow==12.2.0
-face-detection==1.0.5
-
-# ==========================
-# Deep Learning
-# ==========================
-torch==2.11.0
-torchvision==0.26.0
-torchaudio==2.11.0
-
-# ==========================
-# Machine Learning
-# ==========================
-scikit-learn==1.7.2
-xgboost==3.2.0
+face_detection==1.0.5
+fastapi==0.139.0
 joblib==1.5.3
-
-# ==========================
-# Backend
-# ==========================
-fastapi==0.138.0
-uvicorn==0.49.0
-requests==2.34.2
-pydantic==2.13.4
-
-# ==========================
-# Audio
-# ==========================
-sounddevice==0.5.5
-
-# ==========================
-# Visualization
-# ==========================
-matplotlib==3.10.9
-
-# ==========================
-# Utilities
-# ==========================
-protobuf==4.25.9
-python-dateutil==2.9.0.post0
+mediapipe==0.10.14
+numpy==2.5.1
+opencv_contrib_python==4.13.0.92
+opencv_python==4.13.0.92
+pandas==3.0.3
+Pillow==12.3.0
+Requests==2.34.2
+scikit_learn==1.9.0
+scipy==1.18.0
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+xgboost==3.3.0
