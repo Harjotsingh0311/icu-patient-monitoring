@@ -86,7 +86,7 @@ def main() -> None:
     )
 
     # ── Camera ───────────────────────────────────────────────────────────
-    cap = cv2.VideoCapture(r"C:\ICU monitoring\Face + Eye Module\icu4.mp4")
+    cap = cv2.VideoCapture(r"C:\ICU monitoring\Face + Eye Module\icu.mp4")
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.camera.frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.camera.frame_height)
