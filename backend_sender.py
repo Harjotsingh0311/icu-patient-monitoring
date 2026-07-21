@@ -6,7 +6,7 @@ import requests
 # Configuration
 # ==========================================================
 
-ENABLE_BACKEND = False
+ENABLE_BACKEND = True
 
 BACKEND_URL = "http://172.20.10.2:8000/api/face-eye/features"
 STREAM_URL = "http://172.20.10.2:8000/api/stream/face"

@@ -1,16 +1,15 @@
 import pathlib
-from typing import Union
+import time 
 
 import cv2
 import numpy as np
-import torch
-import torch.nn as nn
+import onnxruntime as ort
 from dataclasses import dataclass
 try:
     from face_detection import RetinaFace
 except ImportError:
     RetinaFace = None
-from .utils import prep_input_numpy, getArch
+from .utils import prep_input_numpy
 from .results import GazeResultContainer
 
 
@@ -32,11 +31,15 @@ class Pipeline:
         self.confidence_threshold = confidence_threshold
 
         # Create L2CS model
-        self.model = getArch(arch, 90)
-        self.model.load_state_dict(torch.load(self.weights, map_location=device))
-        self.model.to(self.device)
-        self.model.eval()
+        # Create ONNX Runtime session
+        onnx_path = pathlib.Path(self.weights).with_suffix(".onnx")
 
+        self.session = ort.InferenceSession(
+            str(onnx_path),
+            providers=["CPUExecutionProvider"]
+        )
+
+        self.input_name = self.session.get_inputs()[0].name
         # Create RetinaFace if requested
         if self.include_detector:
 
@@ -50,11 +53,9 @@ class Pipeline:
             else:
                 self.detector = RetinaFace(gpu_id=device.index)
 
-        self.softmax = nn.Softmax(dim=1)
+        
 
-
-        self.idx_tensor = [idx for idx in range(90)]
-        self.idx_tensor = torch.FloatTensor(self.idx_tensor).to(self.device)
+        self.idx_tensor = np.arange(90, dtype=np.float32)
 
     def step(self, frame: np.ndarray) -> GazeResultContainer:
 
@@ -117,27 +118,44 @@ class Pipeline:
 
         return results
 
-    def predict_gaze(self, frame: Union[np.ndarray, torch.Tensor]):
-        
-        # Prepare input
+    import time
+
+    def predict_gaze(self, frame):
+
+        # ---------------- Preprocessing ----------------
+        t = time.perf_counter()
+
         if isinstance(frame, np.ndarray):
-            img = prep_input_numpy(frame, self.device)
-        elif isinstance(frame, torch.Tensor):
-            img = frame
+            img = prep_input_numpy(frame)
         else:
             raise RuntimeError("Invalid dtype for input")
-        
-        
-        # Predict 
-        gaze_pitch, gaze_yaw = self.model(img)
-        pitch_predicted = self.softmax(gaze_pitch)
-        yaw_predicted = self.softmax(gaze_yaw)
-        
-        # Get continuous predictions in degrees.
-        pitch_predicted = torch.sum(pitch_predicted.data * self.idx_tensor, dim=1) * 4 - 180
-        yaw_predicted = torch.sum(yaw_predicted.data * self.idx_tensor, dim=1) * 4 - 180
-        
-        pitch_predicted= pitch_predicted.cpu().detach().numpy()* np.pi/180.0
-        yaw_predicted= yaw_predicted.cpu().detach().numpy()* np.pi/180.0
-        
+
+
+        # ---------------- ONNX ----------------
+        t = time.perf_counter()
+
+        yaw_logits, pitch_logits = self.session.run(
+            None,
+            {self.input_name: img}
+        )
+
+
+        # ---------------- Post ----------------
+        t = time.perf_counter()
+
+        def softmax(x):
+            x = x - np.max(x, axis=1, keepdims=True)
+            exp_x = np.exp(x)
+            return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+
+        yaw_prob = softmax(yaw_logits)
+        pitch_prob = softmax(pitch_logits)
+
+        yaw_predicted = np.sum(yaw_prob * self.idx_tensor, axis=1) * 4 - 180
+        pitch_predicted = np.sum(pitch_prob * self.idx_tensor, axis=1) * 4 - 180
+
+        yaw_predicted = yaw_predicted * np.pi / 180.0
+        pitch_predicted = pitch_predicted * np.pi / 180.0
+
+
         return pitch_predicted, yaw_predicted

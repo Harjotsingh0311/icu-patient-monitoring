@@ -7,24 +7,9 @@ import subprocess
 import re
 
 import numpy as np
-import torch
-import torch.nn as nn
 import scipy.io as sio
 import cv2
-import torchvision
-from torchvision import transforms
-
-from .model import L2CS
         
-transformations = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize(448),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
-    )
-])
 
 def atoi(text):
     return int(text) if text.isdigit() else text
@@ -37,23 +22,26 @@ def natural_keys(text):
     '''
     return [ atoi(c) for c in re.split(r'(\d+)', text) ]
 
-def prep_input_numpy(img:np.ndarray, device:str):
-    """Preparing a Numpy Array as input to L2CS-Net."""
+def prep_input_numpy(img: np.ndarray, device=None):
+    """Prepare NumPy input for ONNX L2CS (PyTorch-free)."""
 
-    if len(img.shape) == 4:
-        imgs = []
-        for im in img:
-            imgs.append(transformations(im))
-        img = torch.stack(imgs)
+    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+    def preprocess(im):
+        im = cv2.resize(im, (448, 448))
+        im = im.astype(np.float32) / 255.0
+        im = (im - mean) / std
+        im = np.transpose(im, (2, 0, 1))  # HWC -> CHW
+        return im
+
+    if img.ndim == 4:
+        img = np.stack([preprocess(im) for im in img], axis=0)
     else:
-        img = transformations(img)
+        img = preprocess(img)
+        img = np.expand_dims(img, axis=0)
 
-    img = img.to(device)
-
-    if len(img.shape) == 3:
-        img = img.unsqueeze(0)
-
-    return img
+    return img.astype(np.float32)
 
 def gazeto3d(gaze):
     gaze_gt = np.zeros([3])

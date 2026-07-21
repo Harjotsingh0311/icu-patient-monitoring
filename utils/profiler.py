@@ -17,22 +17,22 @@ class PipelineProfiler:
 
         print("\n========== PIPELINE PROFILE ==========")
 
-        overall = 0
+        pipeline_avg = None
 
-        for stage in self.total:
+        for stage in sorted(self.total):
 
             avg = self.total[stage] / self.count[stage]
 
-            overall += avg
-
             print(f"{stage:<20}: {avg*1000:7.2f} ms")
+
+            if stage == "Total Pipeline":
+                pipeline_avg = avg
 
         print("--------------------------------------")
 
-        print(f"{'TOTAL':<20}: {overall*1000:7.2f} ms")
-
-        if overall > 0:
-            print(f"{'FPS':<20}: {1/overall:7.2f}")
+        if pipeline_avg is not None:
+            print(f"{'Overall Time':<20}: {pipeline_avg*1000:7.2f} ms")
+            print(f"{'Overall FPS':<20}: {1/pipeline_avg:7.2f}")
 
         print("======================================\n")
 

@@ -1,6 +1,5 @@
 import time
 from pathlib import Path
-import torch
 from l2cs import Pipeline
 
 
@@ -10,9 +9,7 @@ class GazeEstimator:
 
         root = Path(__file__).resolve().parent.parent
 
-        device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        device = "cpu"
 
         
 

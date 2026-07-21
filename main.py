@@ -86,7 +86,7 @@ def main() -> None:
     )
 
     # ── Camera ───────────────────────────────────────────────────────────
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(r"C:\ICU monitoring\Face + Eye Module\icu4.mp4")
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.camera.frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.camera.frame_height)
@@ -137,6 +137,7 @@ def main() -> None:
     # ── Main loop ─────────────────────────────────────────────────────────
     while True:
         ret, frame = cap.read()
+        pipeline_start = time.perf_counter()
         if not ret:
             print("[WARN] Frame capture failed — skipping.")
             continue
@@ -207,11 +208,32 @@ def main() -> None:
                 au = estimate_aus(patient_landmarks, iod=iod)
 
                 # ── Head pose ─────────────────────────────────────────────
-                yaw, pitch, roll = estimate_head_pose(patient_landmarks, w, h)
+                t0 = time.perf_counter()
+
+                yaw, pitch, roll = estimate_head_pose(
+                    patient_landmarks,
+                    w,
+                    h,
+                )
+
+                profiler.add(
+                    "Head Pose",
+                    time.perf_counter() - t0,
+                )
                 pose_dev = head_pose_deviation(yaw, pitch, roll)
 
                 # ── Motion energy ─────────────────────────────────────────
-                motion = compute_motion_energy(patient_landmarks, previous_landmarks)
+                t0 = time.perf_counter()
+
+                motion = compute_motion_energy(
+                    patient_landmarks,
+                    previous_landmarks,
+                )
+
+                profiler.add(
+                    "Motion",
+                    time.perf_counter() - t0,
+                )
                 previous_landmarks = patient_landmarks
 
                 # ── Asymmetry ─────────────────────────────────────────────
@@ -251,7 +273,14 @@ def main() -> None:
 
                 if face_crop.size > 0:
 
+                    t0 = time.perf_counter()
+
                     gaze_yaw, gaze_pitch = gaze_estimator.estimate(face_crop)
+
+                    profiler.add(
+                        "Gaze",
+                        time.perf_counter() - t0,
+                    )
 
                     gaze_data = gaze_tracker.update(
                         gaze_yaw,
@@ -294,6 +323,7 @@ def main() -> None:
                     
 
                 # ── Clinical indices ──────────────────────────────────────
+                t0 = time.perf_counter()
                 ci = compute_clinical_indices(
                     au=au,
                     perclos=perclos,
@@ -304,12 +334,17 @@ def main() -> None:
                     jaw_rhythm=jaw_rhythm,
                     baseline=baseline.baseline if baseline.ready else None,
                 )
+                profiler.add(
+                    "Clinical",
+                    time.perf_counter() - t0,
+                )
 
                 # Push clinical indices into temporal buffer
                 temp_buf.push(ci.as_dict())
 
                 # ── Confidence ────────────────────────────────────────────
                 face_area_frac = patient_box.area / frame_area
+                t0 = time.perf_counter()
                 confidence = conf_est.update(
                     landmarks=patient_landmarks,
                     yaw_deg=yaw,
@@ -318,8 +353,13 @@ def main() -> None:
                     patient_confirmed=tracker.patient_confirmed,
                     face_area_fraction=face_area_frac,
                 )
+                profiler.add(
+    "Clinical",
+    time.perf_counter() - t0,
+)
 
                 # ── Episode detection ─────────────────────────────────────
+                t0 = time.perf_counter()
                 ep_detector.update(
                     frame_idx=frame_idx,
                     pain_score=ci.pain_index,
@@ -328,8 +368,14 @@ def main() -> None:
                     fatigue_score=ci.fatigue_index,
                     fear_score=ci.fear_index,
                 )
+                profiler.add(
+    "Clinical",
+    time.perf_counter() - t0,
+)
+
 
                 # ── Logging ───────────────────────────────────────────────
+                t0 = time.perf_counter()
                 logger.log_frame(
                     frame_idx=frame_idx,
                     au=au,
@@ -344,6 +390,10 @@ def main() -> None:
                     gaze_data=gaze_data,
                     behavior_state=behavior_state,
                 )
+                profiler.add(
+    "Clinical",
+    time.perf_counter() - t0,
+)
 
                 # ── Landmark dots (key pain AUs) ──────────────────────────
                 draw_landmark_dots(
@@ -363,6 +413,7 @@ def main() -> None:
         
 
         # ── Clinical overlay ──────────────────────────────────────────────
+        t0 = time.perf_counter()
         overlay.render(
             frame=frame,
             au=au,
@@ -379,6 +430,10 @@ def main() -> None:
             gaze_pitch=gaze_pitch,
             gaze_data=gaze_data,
         )
+        profiler.add(
+    "Clinical",
+    time.perf_counter() - t0,
+)
 
         if frame_idx % 100 == 0:
             print("REPORT CALLED")
@@ -393,6 +448,10 @@ def main() -> None:
         )
         
         send_frame_to_backend(frame)
+        profiler.add(
+    "Total Pipeline",
+    time.perf_counter() - pipeline_start,
+)
         
 
         cv2.imshow("Clinical Distress Monitor", frame)
