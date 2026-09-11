@@ -1,0 +1,1675 @@
+%% ============================================================
+%% ICU PATIENT FACE MONITORING SYSTEM
+%% UCS 503 -- SOFTWARE ENGINEERING PROJECT REPORT
+%% ============================================================
+
+\documentclass{tietreport}
+
+%% ============================================================
+%% PACKAGES
+%% ============================================================
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{setspace}
+
+\usepackage[
+    nameinlink,
+    noabbrev
+]{cleveref}
+
+\usepackage[
+    backend=biber,
+    style=alphabetic,
+    sorting=nty,
+    maxnames=5,
+    minnames=3,
+    maxalphanames=4,
+    minalphanames=3,
+    backref=true,
+    doi=false,
+    isbn=false,
+    url=true,
+    eprint=false
+]{biblatex}
+
+\addbibresource{references.bib}
+
+%% ============================================================
+%% GENERAL FORMATTING
+%% ============================================================
+
+\onehalfspacing
+
+\setlist[itemize]{
+    leftmargin=*,
+    itemsep=3pt,
+    topsep=4pt
+}
+
+\setlist[enumerate]{
+    leftmargin=*,
+    itemsep=4pt,
+    topsep=4pt
+}
+
+\newcolumntype{Y}{
+    >{\raggedright\arraybackslash}X
+}
+
+\newcolumntype{P}[1]{
+    >{\raggedright\arraybackslash}p{#1}
+}
+
+\captionsetup{
+    font=small,
+    labelfont=bf,
+    justification=centering
+}
+
+%% ============================================================
+%% CODE LISTINGS
+%% ============================================================
+
+\lstdefinestyle{projectcode}{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny,
+    xleftmargin=2em,
+    framexleftmargin=1.5em
+}
+
+\lstset{
+    style=projectcode
+}
+
+%% ============================================================
+%% PROJECT INFORMATION
+%% ============================================================
+
+\TitlePageHeader{
+    UCS 503 -- Software Engineering Project Report
+}
+
+\ProjectTitle{
+    ICU Patient Face Monitoring System
+}
+
+\ProjectSubTitle{
+    A Computer-Vision-Based Non-Contact System for Continuous
+    Facial and Ocular Monitoring of Intensive Care Unit Patients
+}
+
+\author{
+    \texttt{1024240039} Harjot Singh\\
+    \texttt{1024240103} Pahul Singh
+}
+
+\TitlePageSubText{
+    BE Third Year, Data Science and Artificial Intelligence
+}
+
+\AdvisorName{
+    Ms. Anushka
+}
+
+\TitlePageFooterText{
+    \large Project Report\\[0.2cm]
+    \bfseries Computer Science and Engineering Department\\[0.15cm]
+    Thapar Institute of Engineering and Technology, Patiala
+}
+
+%% ============================================================
+%% DOCUMENT
+%% ============================================================
+
+\begin{document}
+
+%% ============================================================
+%% TITLE PAGE
+%% ============================================================
+
+\maketitle
+
+%% ============================================================
+%% FRONT MATTER
+%% ============================================================
+
+\pagenumbering{roman}
+
+%% ------------------------------------------------------------
+%% ABSTRACT
+%% ------------------------------------------------------------
+
+\chapter*{Abstract}
+
+\addcontentsline{toc}{chapter}{Abstract}
+
+This report presents the design and implementation of the Face + Eye
+component of an ICU Patient Monitoring System. The objective of the
+component is to provide a non-contact computer-vision pipeline capable
+of transforming camera observations of a patient into structured and
+time-aware facial and ocular monitoring information.
+
+The implemented pipeline begins with camera-frame acquisition and
+progresses through face detection, facial landmark extraction, eye
+landmark extraction, Eye Aspect Ratio (EAR) calculation, eye-state
+classification, blink analysis, temporal processing, gaze estimation,
+confidence estimation, global-value generation, alert generation, and
+backend integration.
+
+A key design principle is that individual video frames should not be
+treated as independent monitoring observations. Eye measurements can be
+affected by landmark noise, illumination, head movement, temporary
+occlusion, and camera positioning. The system therefore uses temporal
+history and duration-based reasoning to distinguish short eye closures
+from persistent closure conditions.
+
+The communication layer is implemented using a FastAPI backend. The
+Face + Eye processing pipeline sends structured feature information
+through an HTTP/JSON interface, while dashboard frames are transmitted
+through a separate background sender. This separation reduces the effect
+of dashboard streaming delays on the main processing pipeline.
+
+The current project scope covers the Face + Eye processing pipeline and
+its integration with the backend API. Full clinical validation,
+patient-specific calibration, large-scale deployment, historical
+storage, and production dashboard integration remain future work.
+
+\noindent\textbf{Keywords:}
+ICU monitoring, computer vision, facial landmarks, Eye Aspect Ratio,
+blink detection, gaze estimation, temporal processing, FastAPI,
+OpenCV, Python.
+
+%% ------------------------------------------------------------
+%% ABBREVIATIONS
+%% ------------------------------------------------------------
+
+\chapter*{List of Abbreviations}
+
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+
+\begin{tabularx}{\textwidth}{@{}lY@{}}
+
+\toprule
+\textbf{Abbreviation} & \textbf{Meaning}\\
+\midrule
+
+API & Application Programming Interface\\
+ASGI & Asynchronous Server Gateway Interface\\
+EAR & Eye Aspect Ratio\\
+FPS & Frames Per Second\\
+HTTP & Hypertext Transfer Protocol\\
+ICU & Intensive Care Unit\\
+JSON & JavaScript Object Notation\\
+REST & Representational State Transfer\\
+TP & True Positive\\
+FP & False Positive\\
+FN & False Negative\\
+
+\bottomrule
+
+\end{tabularx}
+
+%% ============================================================
+%% TABLE OF CONTENTS
+%% ============================================================
+
+\tableofcontents
+
+%% ============================================================
+%% LIST OF FIGURES
+%% ============================================================
+
+\listoffigures
+
+%% ============================================================
+%% LIST OF TABLES
+%% ============================================================
+
+\listoftables
+
+%% ============================================================
+%% MAIN MATTER
+%% ============================================================
+
+\clearpage
+
+\pagenumbering{arabic}
+
+%% ============================================================
+%% CHAPTER 1
+%% ============================================================
+
+\chapter{Introduction}
+
+\section{Background and Context}
+
+Intensive Care Units (ICUs) require continuous observation because the
+condition of a patient can change rapidly. Conventional ICU monitoring
+systems primarily rely on physiological sensors such as ECG
+electrodes, pulse oximeters, blood-pressure monitors, and other medical
+devices. These systems provide important physiological measurements
+but do not directly capture visible facial and ocular behaviour.
+
+Computer vision provides an opportunity to supplement conventional
+monitoring through non-contact observation. A camera can continuously
+capture the patient's face, while computer-vision algorithms can
+identify facial landmarks and extract information from the eye region.
+Vision-based patient monitoring has previously been studied as a
+possible supplement to conventional monitoring systems
+\cite{BDMS16,DMS19}.
+
+The Face + Eye component developed as part of the ICU Patient
+Monitoring System follows this approach. Rather than stopping at face
+detection, the system progressively converts raw video frames into
+structured monitoring information.
+
+\begin{center}
+\textbf{Camera}
+$\rightarrow$
+\textbf{Face Detection}
+$\rightarrow$
+\textbf{Landmarks}
+$\rightarrow$
+\textbf{Eye Features}
+$\rightarrow$
+\textbf{Temporal Processing}
+$\rightarrow$
+\textbf{Global Values}
+$\rightarrow$
+\textbf{Alerts}
+$\rightarrow$
+\textbf{Backend}
+\end{center}
+
+The system separates visual processing from communication. The
+computer-vision layer focuses on extracting observations, while the
+backend provides an interface through which the processed information
+can be consumed by downstream components.
+
+The system is intended as a supplementary monitoring and decision-support
+system. It is not intended to replace professional medical judgement
+or independently diagnose a patient's medical condition.
+
+%% ------------------------------------------------------------
+
+\section{Problem Statement}
+
+Continuous visual observation of ICU patients can be challenging when
+healthcare professionals must monitor several patients simultaneously.
+Facial and ocular changes may occur continuously and may not always be
+noticed immediately through manual observation.
+
+The project therefore addresses the following problem:
+
+\begin{quote}
+\itshape
+How can facial and ocular information obtained from a camera be
+automatically transformed into structured, time-aware monitoring
+information and made available through a backend service for
+continuous ICU observation?
+\end{quote}
+
+The problem consists of several engineering tasks:
+
+\begin{enumerate}
+    \item detecting the patient's face;
+    \item extracting facial landmarks;
+    \item extracting eye-region landmarks;
+    \item calculating eye-related geometric features;
+    \item classifying observable eye states;
+    \item analysing eye behaviour over time;
+    \item estimating relative gaze behaviour;
+    \item generating global monitoring values;
+    \item generating observation-level alerts; and
+    \item communicating processed information to a backend.
+\end{enumerate}
+
+%% ------------------------------------------------------------
+
+\section{Motivation}
+
+A single video frame is often insufficient for reliable behavioural
+interpretation. A low EAR value can result from an actual blink,
+incorrect landmarks, temporary occlusion, head movement, or poor image
+quality.
+
+Consequently, temporal processing is required to determine whether a
+condition persists over multiple frames.
+
+A second motivation is software modularity. The monitoring interface
+should not need to know how facial landmarks were detected or how EAR
+was calculated. A backend API establishes a clear abstraction boundary
+between the computer-vision engine and downstream applications.
+
+%% ------------------------------------------------------------
+
+\section{Project Objectives}
+
+The Face + Eye implementation is organised around the following
+objectives:
+
+\begin{enumerate}
+
+    \item \textbf{Face Detection:}
+    Identify the patient's face from incoming video frames.
+
+    \item \textbf{Facial Landmark Detection:}
+    Obtain structured facial landmark coordinates.
+
+    \item \textbf{Eye Landmark Extraction:}
+    Extract landmarks associated with the left and right eyes.
+
+    \item \textbf{Eye Feature Extraction:}
+    Calculate EAR and related geometric measurements.
+
+    \item \textbf{Eye-State Analysis:}
+    Distinguish observable states such as open, partially closed,
+    and closed.
+
+    \item \textbf{Temporal Analysis:}
+    Analyse observations across multiple frames.
+
+    \item \textbf{Global Value and Alert Generation:}
+    Convert low-level measurements into compact monitoring values and
+    observation-level alerts.
+
+    \item \textbf{Backend Integration:}
+    Expose processed information through a FastAPI-based
+    communication layer.
+
+\end{enumerate}
+
+%% ------------------------------------------------------------
+
+\section{Scope and Boundaries}
+
+The current implementation covers the Face + Eye processing chain up
+to the backend API boundary.
+
+\begin{center}
+
+\begin{tabular}{c}
+
+Camera Input\\
+$\downarrow$\\
+Frame Acquisition\\
+$\downarrow$\\
+Face Detection\\
+$\downarrow$\\
+Facial Landmarks\\
+$\downarrow$\\
+Eye Features\\
+$\downarrow$\\
+Temporal Processing\\
+$\downarrow$\\
+Global Monitoring State\\
+$\downarrow$\\
+Alert Generation\\
+$\downarrow$\\
+FastAPI Backend
+
+\end{tabular}
+
+\end{center}
+
+The system does not claim independent medical diagnosis or replacement
+of professional clinical judgement.
+
+%% ------------------------------------------------------------
+
+\section{Project Contributions}
+
+The main contributions of the implementation are:
+
+\begin{itemize}
+    \item modular decomposition of the computer-vision pipeline;
+    \item facial and ocular feature extraction;
+    \item EAR-based eye-state analysis;
+    \item temporal reasoning for blink and closure behaviour;
+    \item relative gaze estimation;
+    \item confidence and global-state generation;
+    \item observation-level alert generation;
+    \item separation of processing and communication layers;
+    \item HTTP/JSON backend integration; and
+    \item asynchronous dashboard-frame transmission.
+\end{itemize}
+
+%% ============================================================
+%% CHAPTER 2
+%% ============================================================
+
+\chapter{System Analysis and Requirements}
+
+\section{System Context}
+
+The Face + Eye component forms one processing component of the larger
+ICU monitoring architecture. The camera provides visual input, the
+computer-vision pipeline converts the input into structured
+observations, and the backend provides these observations to downstream
+applications.
+
+The principal entities are:
+
+\begin{itemize}
+    \item \textbf{Camera:} Provides patient video frames.
+    \item \textbf{Face + Eye Engine:} Performs computer-vision
+    processing.
+    \item \textbf{Backend:} Receives and exposes processed information.
+    \item \textbf{Healthcare Staff:} Consume monitoring information
+    and alerts.
+    \item \textbf{Administrator:} Configures system parameters where
+    applicable.
+\end{itemize}
+
+%% ------------------------------------------------------------
+
+\section{Functional Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Functional requirements}
+\label{tab:functional}
+
+\begin{tabularx}{0.95\textwidth}{@{}P{2cm}Y@{}}
+
+\toprule
+\textbf{ID} & \textbf{Requirement}\\
+\midrule
+
+FR1 & The system shall acquire video frames from a camera or video
+source.\\
+FR2 & The system shall detect the patient's face.\\
+FR3 & The system shall obtain facial landmarks.\\
+FR4 & The system shall extract landmarks associated with both eyes.\\
+FR5 & The system shall calculate eye-related geometric features.\\
+FR6 & The system shall classify observable eye states.\\
+FR7 & The system shall analyse eye behaviour temporally.\\
+FR8 & The system shall detect prolonged eye-closure conditions.\\
+FR9 & The system shall generate structured global monitoring values.\\
+FR10 & The system shall transmit processed values to the backend.\\
+FR11 & The system shall support dashboard-frame transmission.\\
+
+\bottomrule
+
+\end{tabularx}
+\end{table}
+
+%% ------------------------------------------------------------
+
+\section{Non-Functional Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Non-functional requirements}
+\label{tab:nonfunctional}
+
+\begin{tabularx}{0.95\textwidth}{@{}P{3.2cm}Y@{}}
+
+\toprule
+\textbf{Property} & \textbf{Requirement}\\
+\midrule
+
+Performance &
+The system should operate close to real-time.\\
+
+Modularity &
+Processing stages should remain independently maintainable.\\
+
+Reliability &
+Temporary communication failures should not terminate the main
+processing pipeline.\\
+
+Maintainability &
+Components should have clearly separated responsibilities.\\
+
+Scalability &
+The architecture should permit future multi-patient deployment.\\
+
+Security &
+Patient information should be transmitted and stored using appropriate
+controls.\\
+
+Interpretability &
+Outputs should represent observable computer-vision states rather
+than unsupported clinical diagnoses.\\
+
+\bottomrule
+
+\end{tabularx}
+\end{table}
+
+%% ------------------------------------------------------------
+
+\section{System Constraints}
+
+The system can be affected by:
+
+\begin{itemize}
+    \item camera placement;
+    \item illumination;
+    \item patient head orientation;
+    \item facial occlusion;
+    \item landmark quality;
+    \item camera-to-patient distance;
+    \item computational resources; and
+    \item backend/network availability.
+\end{itemize}
+
+%% ============================================================
+%% CHAPTER 3
+%% ============================================================
+
+\chapter{Methodology and System Design}
+
+\section{Overall Architecture}
+
+The system follows a modular processing architecture. Each stage has
+a specific responsibility and passes structured information to the next
+stage.
+
+\begin{center}
+
+\begin{tabular}{c}
+
+Camera\\
+$\downarrow$\\
+Frame Acquisition\\
+$\downarrow$\\
+Face Detection\\
+$\downarrow$\\
+Facial Landmark Detection\\
+$\downarrow$\\
+Eye Landmark Extraction\\
+$\downarrow$\\
+EAR and Eye Features\\
+$\downarrow$\\
+Eye-State and Blink Analysis\\
+$\downarrow$\\
+Temporal Processing\\
+$\downarrow$\\
+Gaze / Confidence Analysis\\
+$\downarrow$\\
+Global Monitoring State\\
+$\downarrow$\\
+Alert Generation\\
+$\downarrow$\\
+Backend Integration
+
+\end{tabular}
+
+\end{center}
+
+%% ------------------------------------------------------------
+
+\section{Context-Level Data Flow}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[
+        width=0.82\textwidth
+    ]{figures/context-dfd.jpeg}
+
+    \caption{
+        Context-level Data Flow Diagram of the ICU Face Monitoring
+        System.
+    }
+
+    \label{fig:context-dfd}
+\end{figure}
+
+The context-level DFD represents the monitoring system as a single
+process interacting with the camera, healthcare staff, and
+administrator.
+
+%% ------------------------------------------------------------
+
+\section{Level-1 Data Flow Diagram}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[
+        width=0.92\textwidth
+    ]{figures/level1-dfd.jpeg}
+
+    \caption{
+        Level-1 Data Flow Diagram of the Face + Eye processing
+        pipeline.
+    }
+
+    \label{fig:level1-dfd}
+\end{figure}
+
+The Level-1 DFD decomposes the system into face and landmark
+processing, eye-feature extraction, temporal processing, global-value
+generation, and alert generation.
+
+%% ------------------------------------------------------------
+
+\section{Use Case Design}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[
+        width=0.90\textwidth
+    ]{figures/usecase-diagram.jpeg}
+
+    \caption{
+        Use Case Diagram of the ICU Face Monitoring System.
+    }
+
+    \label{fig:usecase}
+\end{figure}
+
+The use-case model identifies the Camera, Healthcare Staff, and Admin
+as the principal actors.
+
+%% ------------------------------------------------------------
+
+\section{UML Class Design}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[
+        width=0.78\textwidth
+    ]{figures/class-diagram.jpeg}
+
+    \caption{
+        UML Class Diagram of the Face + Eye processing pipeline.
+    }
+
+    \label{fig:class}
+\end{figure}
+
+The class-level design separates frame acquisition, face detection,
+landmark extraction, eye processing, feature extraction, temporal
+analysis, global-value generation, and alert handling.
+
+%% ------------------------------------------------------------
+
+\section{Activity Flow}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[
+        width=0.68\textwidth
+    ]{figures/activity-diagram.jpeg}
+
+    \caption{
+        Activity diagram for per-frame processing and prolonged
+        eye-closure alert generation.
+    }
+
+    \label{fig:activity}
+\end{figure}
+
+The activity flow shows that each frame is checked for a usable face
+before eye features are calculated. Temporal information is updated
+before alert generation.
+
+%% ------------------------------------------------------------
+
+\section{Sequence Flow}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[
+        width=0.72\textwidth
+    ]{figures/sequence-diagram.jpeg}
+
+    \caption{
+        Sequence diagram showing the journey of a frame through the
+        processing pipeline.
+    }
+
+    \label{fig:sequence}
+\end{figure}
+
+The sequence illustrates the movement of information from frame
+acquisition through feature calculation, temporal processing, alert
+evaluation, and monitoring delivery.
+
+%% ------------------------------------------------------------
+
+\section{Technical Stack}
+
+\begin{table}[H]
+\centering
+\caption{Technology stack}
+\label{tab:stack}
+
+\begin{tabularx}{0.94\textwidth}{@{}P{3.3cm}Y@{}}
+
+\toprule
+\textbf{Technology} & \textbf{Role}\\
+\midrule
+
+Python & Primary implementation language.\\
+OpenCV & Camera access and image processing.\\
+MediaPipe Face Mesh & Facial landmark estimation.\\
+NumPy & Numerical and geometric computation.\\
+FastAPI & Backend API framework.\\
+Uvicorn & ASGI application server.\\
+Requests & HTTP communication from the Face + Eye pipeline.\\
+Git & Version control and collaboration.\\
+
+\bottomrule
+
+\end{tabularx}
+\end{table}
+
+OpenCV is used for video acquisition and image processing, while
+MediaPipe provides facial geometry for downstream eye analysis
+\cite{KAGG19,Ope26,Goo26}.
+
+%% ============================================================
+%% CHAPTER 4
+%% ============================================================
+
+\chapter{Implementation}
+
+\section{Project Structure}
+
+The implementation is divided into separate functional modules.
+
+\begin{lstlisting}[caption={Representative project structure}]
+
+Face + Eye Module/
+|
++-- main.py
++-- backend_sender.py
+|
++-- camera/
+|   +-- camera_stream.py
+|
++-- landmarks/
+|   +-- landmark_extractor.py
+|   +-- landmark_groups.py
+|
++-- eye/
+|   +-- gaze_estimator.py
+|   +-- gaze_tracker.py
+|
++-- l2cs/
+|   +-- model.py
+|   +-- pipeline.py
+|   +-- results.py
+|
++-- temporal/
+|   +-- feature_buffer.py
+|
++-- episodes/
+|   +-- episode_detector.py
+|
++-- confidence/
+|   +-- confidence_estimator.py
+|
++-- clinical_metrics/
+|   +-- indices.py
+|
++-- visualization/
+|   +-- overlay.py
+|
++-- logging_system/
+|   +-- distress_logger.py
+|
++-- backend/
+    +-- main.py
+
+\end{lstlisting}
+
+%% ------------------------------------------------------------
+
+\section{Face Detection}
+
+The first stage determines whether a usable face is present in the
+incoming frame. Subsequent processing is performed only when a valid
+face observation is available.
+
+Face detection answers the question:
+
+\begin{quote}
+\itshape
+Where is the patient's face in the current frame?
+\end{quote}
+
+Traditional real-time face detection approaches such as Viola--Jones
+demonstrated the feasibility of efficient face detection
+\cite{VJ04}.
+
+If no usable face is detected, the frame is treated as a missing or
+invalid observation rather than being forced through the eye-analysis
+pipeline.
+
+%% ------------------------------------------------------------
+
+\section{Facial Landmark Detection}
+
+After a face has been identified, facial landmarks are extracted. Each
+landmark represents a geometric location on the face. Together, these
+landmarks form a structured representation of facial geometry.
+
+The principal purpose of this stage is to provide coordinates required
+by downstream eye and facial analysis.
+
+%% ------------------------------------------------------------
+
+\section{Eye Landmark Extraction}
+
+The left and right eye regions are extracted from the facial landmark
+geometry. Both eyes are considered because one eye may occasionally
+have reduced visibility because of head orientation, illumination, or
+temporary occlusion.
+
+The extracted eye landmarks provide the coordinates required for
+geometric measurements.
+
+%% ------------------------------------------------------------
+
+\section{Eye Aspect Ratio}
+
+The principal geometric feature used by the eye-analysis pipeline is
+the Eye Aspect Ratio (EAR).
+
+For six representative eye landmarks
+$p_1,p_2,p_3,p_4,p_5,p_6$:
+
+\begin{equation}
+EAR =
+\frac{
+\lVert p_2-p_6\rVert
++
+\lVert p_3-p_5\rVert
+}{
+2\lVert p_1-p_4\rVert
+}
+\label{eq:ear}
+\end{equation}
+
+where $\lVert\cdot\rVert$ represents Euclidean distance.
+
+For an open eye, the vertical distances tend to be larger, producing a
+higher EAR. As the eye closes, the vertical distances decrease and EAR
+tends to become smaller.
+
+EAR-based blink detection using facial landmarks is a recognised
+computer-vision technique \cite{SC16}.
+
+For the two eyes, the average EAR can be represented as:
+
+\begin{equation}
+EAR_{\mathrm{avg}}
+=
+\frac{
+EAR_L+EAR_R
+}{
+2
+}
+\label{eq:average-ear}
+\end{equation}
+
+%% ------------------------------------------------------------
+
+\section{Eye-State Classification}
+
+The calculated EAR can be mapped to an observable eye state using a
+configured threshold.
+
+\begin{table}[H]
+\centering
+\caption{EAR-based eye-state interpretation}
+\label{tab:eye-state}
+
+\begin{tabularx}{0.75\textwidth}{@{}P{5cm}Y@{}}
+
+\toprule
+\textbf{EAR Condition} & \textbf{Eye State}\\
+\midrule
+
+EAR above configured threshold & Open\\
+EAR near configured threshold & Partially closed\\
+EAR below configured threshold & Closed\\
+
+\bottomrule
+
+\end{tabularx}
+\end{table}
+
+The threshold is an implementation parameter rather than a universal
+medical constant.
+
+%% ------------------------------------------------------------
+
+\section{Blink Detection}
+
+A blink is treated as a temporal transition:
+
+\begin{center}
+
+Open
+$\rightarrow$
+Closing
+$\rightarrow$
+Closed
+$\rightarrow$
+Opening
+$\rightarrow$
+Open
+
+\end{center}
+
+Rather than declaring a blink from a single frame, the system observes
+eye measurements across time.
+
+%% ------------------------------------------------------------
+
+\section{Temporal Processing}
+
+Facial and ocular measurements are treated as time-dependent
+observations.
+
+For a sequence:
+
+\[
+x_1,x_2,\ldots,x_n
+\]
+
+a moving average over the latest $N$ measurements is:
+
+\begin{equation}
+\bar{x}_t
+=
+\frac{1}{N}
+\sum_{i=0}^{N-1}
+x_{t-i}
+\label{eq:moving-average}
+\end{equation}
+
+Temporal smoothing reduces the effect of isolated noisy observations.
+
+%% ------------------------------------------------------------
+
+\section{Gaze Estimation}
+
+The system also incorporates gaze-related information.
+
+Gaze is represented as relative behaviour rather than as an exact
+clinical gaze measurement.
+
+Possible states include:
+
+\begin{itemize}
+    \item left;
+    \item right;
+    \item upward;
+    \item downward;
+    \item centre; and
+    \item uncertain.
+\end{itemize}
+
+%% ------------------------------------------------------------
+
+\section{Confidence Estimation}
+
+Confidence provides an indication of the reliability of the current
+observation.
+
+Relevant factors include:
+
+\begin{itemize}
+    \item face-detection quality;
+    \item landmark quality;
+    \item eye visibility;
+    \item head pose;
+    \item illumination; and
+    \item temporary occlusion.
+\end{itemize}
+
+%% ------------------------------------------------------------
+
+\section{Global Monitoring State}
+
+The low-level outputs are consolidated into a structured monitoring
+record.
+
+A representative structure is:
+
+\begin{lstlisting}
+{
+    "eye_state": "open",
+    "left_ear": 0.31,
+    "right_ear": 0.30,
+    "average_ear": 0.305,
+    "blink_count": 2,
+    "closure_duration": 0.0,
+    "gaze_state": "center",
+    "confidence": 0.94,
+    "alert_state": "normal"
+}
+\end{lstlisting}
+
+%% ------------------------------------------------------------
+
+\section{Alert Generation}
+
+The alert layer converts temporally processed information into
+observation-level monitoring events.
+
+For prolonged eye closure:
+
+\begin{equation}
+Alert =
+\begin{cases}
+1, & \text{if closure duration} > T_c,\\
+0, & \text{otherwise}.
+\end{cases}
+\label{eq:alert}
+\end{equation}
+
+where $T_c$ represents the configured closure-duration threshold.
+
+\begin{table}[H]
+\centering
+\caption{Observation-level alert categories}
+\label{tab:alerts}
+
+\begin{tabularx}{0.92\textwidth}{@{}P{4cm}Y@{}}
+
+\toprule
+\textbf{Alert} & \textbf{Description}\\
+\midrule
+
+Prolonged Eye Closure &
+Eye closure persists beyond the configured duration.\\
+
+Repeated Closure &
+Multiple closure events occur in a recent period.\\
+
+Unusual Blink Pattern &
+Blink behaviour differs from configured criteria.\\
+
+Low Confidence &
+Face/eye observations are considered unreliable.\\
+
+Face Not Detected &
+A usable face cannot currently be identified.\\
+
+\bottomrule
+
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+%% CHAPTER 5
+%% ============================================================
+
+\chapter{Backend Integration}
+
+\section{Integration Objective}
+
+The backend provides a communication boundary between the Face + Eye
+processing engine and downstream monitoring applications.
+
+The architecture separates:
+
+\begin{enumerate}
+    \item \textbf{Processing Layer:} Video handling, face detection,
+    landmarks, eye features, temporal processing, gaze, confidence,
+    global values, and alerts.
+
+    \item \textbf{Communication Layer:} HTTP requests, JSON payloads,
+    frame uploads, endpoint handling, and response generation.
+\end{enumerate}
+
+%% ------------------------------------------------------------
+
+\section{FastAPI Backend}
+
+The backend is implemented using FastAPI and is served using Uvicorn.
+
+The local development server is started using:
+
+\begin{lstlisting}[language=bash]
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+\end{lstlisting}
+
+The service is accessible locally through:
+
+\begin{lstlisting}
+http://127.0.0.1:8000
+\end{lstlisting}
+
+The interactive API documentation is available through:
+
+\begin{lstlisting}
+http://127.0.0.1:8000/docs
+\end{lstlisting}
+
+%% ------------------------------------------------------------
+
+\section{Feature Communication}
+
+The Face + Eye processing pipeline sends structured monitoring
+information to:
+
+\begin{lstlisting}
+POST /api/face-eye/features
+\end{lstlisting}
+
+The request body contains the processed feature information in JSON
+format.
+
+%% ------------------------------------------------------------
+
+\section{Dashboard Frame Communication}
+
+Dashboard frames are transmitted separately through:
+
+\begin{lstlisting}
+POST /api/stream/face
+\end{lstlisting}
+
+Frames are encoded as JPEG before transmission.
+
+%% ------------------------------------------------------------
+
+\section{Asynchronous Frame Delivery}
+
+Dashboard frame transmission is separated from the primary processing
+path.
+
+The sender maintains only the latest frame. A background thread waits
+for new frames and uploads them to the backend.
+
+This prevents old frames from accumulating in an unbounded queue and
+reduces the effect of streaming delays on the main processing loop.
+
+%% ------------------------------------------------------------
+
+\section{Backend API}
+
+The backend receives Face + Eye feature information and dashboard
+frames.
+
+A simplified implementation is:
+
+\begin{lstlisting}[language=Python]
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
+import io
+
+app = FastAPI()
+
+face_eye_data = {}
+posture_data = {}
+latest_frame = None
+
+
+@app.post("/api/face-eye/features")
+def receive_face_eye(data: dict):
+
+    global face_eye_data
+
+    face_eye_data = data
+
+    return {"received": True}
+
+
+@app.get("/api/face-eye/features")
+def get_face_eye():
+
+    return face_eye_data
+
+
+@app.post("/posture")
+def receive_posture(data: dict):
+
+    global posture_data
+
+    posture_data = data
+
+    return {"received": True}
+
+
+@app.get("/posture")
+def get_posture():
+
+    return posture_data
+
+
+@app.get("/fusion")
+def fusion():
+
+    return {
+        "face_eye": face_eye_data,
+        "posture": posture_data
+    }
+
+
+@app.post("/api/stream/face")
+async def receive_frame(
+    frame: UploadFile = File(...)
+):
+
+    global latest_frame
+
+    latest_frame = await frame.read()
+
+    return {"received": True}
+
+
+@app.get("/api/stream/face")
+def get_frame():
+
+    if latest_frame is None:
+        return {"error": "No frame available"}
+
+    return StreamingResponse(
+        io.BytesIO(latest_frame),
+        media_type="image/jpeg"
+    )
+\end{lstlisting}
+
+%% ------------------------------------------------------------
+
+\section{End-to-End Integration Flow}
+
+The completed communication architecture is:
+
+\begin{center}
+
+\begin{tabular}{c}
+
+Camera\\
+$\downarrow$\\
+Face + Eye Processing\\
+$\downarrow$\\
+Global Monitoring Record\\
+$\downarrow$\\
+Feature JSON + JPEG Frame\\
+$\downarrow$\\
+FastAPI Backend\\
+$\downarrow$\\
+Monitoring Application
+
+\end{tabular}
+
+\end{center}
+
+%% ------------------------------------------------------------
+
+\section{Failure Handling}
+
+Backend failures should not terminate the primary computer-vision
+pipeline.
+
+The feature sender catches HTTP request exceptions, while the frame
+sender operates in a separate daemon thread.
+
+This provides separation between computer-vision processing, clinical
+feature communication, and dashboard frame streaming.
+
+%% ============================================================
+%% CHAPTER 6
+%% ============================================================
+
+\chapter{Testing and Evaluation}
+
+\section{Testing Methodology}
+
+Testing is organised at multiple levels.
+
+\begin{table}[H]
+\centering
+\caption{Testing methodology}
+\label{tab:testing}
+
+\begin{tabularx}{0.95\textwidth}{@{}P{3.4cm}Y@{}}
+
+\toprule
+\textbf{Test Area} & \textbf{Representative Tests}\\
+\midrule
+
+Face Detection &
+Normal illumination, low illumination, different distances,
+face orientation, temporary occlusion.\\
+
+Eye Landmarks &
+Open eyes, closed eyes, blinking, partial visibility, head movement.\\
+
+EAR Features &
+Open versus closed eyes and left/right eye consistency.\\
+
+Temporal Processing &
+Short blink versus sustained closure and noisy frames.\\
+
+Alert Generation &
+Correct triggering, alert clearing, and avoidance of excessive
+alerts.\\
+
+Backend &
+Server startup, endpoint accessibility, JSON validation, invalid
+requests, and communication failures.\\
+
+Streaming &
+JPEG encoding, frame upload, latest-frame replacement, and streaming
+failure isolation.\\
+
+End-to-End &
+Camera frame through processing, global state, alert generation,
+and backend delivery.\\
+
+\bottomrule
+
+\end{tabularx}
+\end{table}
+
+%% ------------------------------------------------------------
+
+\section{Performance Metrics}
+
+The principal performance metrics are FPS, precision, recall, F1,
+latency, and detection accuracy.
+
+\begin{equation}
+FPS =
+\frac{
+\text{Number of processed frames}
+}{
+\text{Processing time}
+}
+\end{equation}
+
+\begin{equation}
+Precision =
+\frac{TP}{TP+FP}
+\end{equation}
+
+\begin{equation}
+Recall =
+\frac{TP}{TP+FN}
+\end{equation}
+
+\begin{equation}
+F1 =
+2
+\frac{
+Precision \times Recall
+}{
+Precision + Recall
+}
+\end{equation}
+
+Latency represents the time between frame acquisition and the
+availability of the corresponding processed information.
+
+%% ------------------------------------------------------------
+
+\section{Evaluation Targets}
+
+\begin{table}[H]
+\centering
+\caption{Proposed evaluation targets}
+\label{tab:targets}
+
+\begin{tabularx}{0.80\textwidth}{@{}P{5cm}Y@{}}
+
+\toprule
+\textbf{Metric} & \textbf{Target}\\
+\midrule
+
+Processing latency &
+Below approximately 50 ms per processing step.\\
+
+Face detection accuracy &
+Above 95\% on selected test data.\\
+
+Blink detection accuracy &
+Above 90\% on labelled sequences.\\
+
+Throughput &
+Approximately 15 FPS or higher.\\
+
+\bottomrule
+
+\end{tabularx}
+\end{table}
+
+These values are evaluation targets and must not be presented as
+measured results unless experimentally validated.
+
+%% ------------------------------------------------------------
+
+\section{Backend Integration Validation}
+
+The backend integration can be validated through the following
+sequence:
+
+\begin{enumerate}
+    \item Start the FastAPI application using Uvicorn.
+    \item Open \texttt{http://127.0.0.1:8000/docs}.
+    \item Confirm that the Face + Eye endpoints are registered.
+    \item Start the Face + Eye pipeline.
+    \item Confirm that feature POST requests reach the backend.
+    \item Confirm that frame POST requests reach the streaming endpoint.
+    \item Query the fusion endpoint.
+    \item Verify that Face + Eye information is present in the returned
+    data.
+\end{enumerate}
+
+%% ------------------------------------------------------------
+
+\section{Current Results}
+
+The implemented work establishes the processing and communication
+pipeline from camera input through the backend boundary.
+
+The transformation achieved is:
+
+\begin{center}
+
+Camera Frame
+$\rightarrow$
+Face Information
+$\rightarrow$
+Landmarks
+$\rightarrow$
+Eye Measurements
+$\rightarrow$
+Temporal Information
+$\rightarrow$
+Global Monitoring State
+$\rightarrow$
+Alert Information
+$\rightarrow$
+Backend Data
+
+\end{center}
+
+A complete numerical accuracy evaluation requires labelled test data,
+defined ground truth, repeatable conditions, and systematic measurement.
+
+%% ============================================================
+%% CHAPTER 7
+%% ============================================================
+
+\chapter{Discussion}
+
+\section{Engineering Significance}
+
+The principal engineering contribution is the transformation of raw
+visual input into a structured monitoring representation.
+
+The system creates an abstraction boundary around the processed
+monitoring record, improving maintainability, testability, integration,
+modularity, and future extensibility.
+
+%% ------------------------------------------------------------
+
+\section{Importance of Temporal Reasoning}
+
+Temporal reasoning is a central design decision.
+
+A single low EAR measurement may result from a normal blink, landmark
+noise, head movement, poor illumination, temporary occlusion, or
+sustained eye closure.
+
+Using recent history and duration allows the system to distinguish
+isolated measurements from persistent conditions.
+
+%% ------------------------------------------------------------
+
+\section{Processing and Communication Separation}
+
+The processing engine and backend are deliberately separated.
+
+The processing layer is responsible for video acquisition, face
+detection, landmark extraction, eye features, temporal analysis, gaze,
+confidence, global values, and alerts.
+
+The backend is responsible for receiving structured data, serving
+processed data, receiving frames, and exposing information to
+downstream clients.
+
+%% ------------------------------------------------------------
+
+\section{Asynchronous Frame Streaming}
+
+Dashboard frame transmission is deliberately separated from the
+clinical feature path.
+
+Only the newest frame is retained for transmission. This prevents a
+slow network connection from producing an unbounded backlog of old
+frames.
+
+%% ------------------------------------------------------------
+
+\section{Limitations}
+
+The current system has several limitations:
+
+\begin{itemize}
+    \item sensitivity to poor illumination;
+    \item sensitivity to large head-pose changes;
+    \item possible occlusion from hands or medical equipment;
+    \item dependency on camera placement;
+    \item dependency on landmark quality;
+    \item fixed thresholds rather than personalised baselines;
+    \item relative rather than clinically calibrated gaze estimation;
+    \item absence of large-scale clinical validation; and
+    \item dependency on backend/network availability.
+\end{itemize}
+
+The output should therefore be considered supplementary monitoring
+information rather than an independent medical diagnosis.
+
+%% ============================================================
+%% CHAPTER 8
+%% ============================================================
+
+\chapter{Conclusion and Future Work}
+
+\section{Summary}
+
+The Face + Eye component of the ICU Patient Monitoring System
+implements a modular computer-vision pipeline for non-contact
+observation of facial and ocular behaviour.
+
+The processing chain begins with camera input and progresses through
+face detection, facial landmarks, eye landmarks, EAR-based feature
+extraction, eye-state analysis, blink analysis, temporal processing,
+gaze estimation, confidence estimation, global-value generation,
+alert generation, and backend integration.
+
+%% ------------------------------------------------------------
+
+\section{Key Findings}
+
+\begin{enumerate}
+
+    \item \textbf{Temporal processing improves robustness.}
+
+    \item \textbf{Modularity improves maintainability.}
+
+    \item \textbf{Structured API communication simplifies integration.}
+
+    \item \textbf{Asynchronous streaming protects the main pipeline.}
+
+    \item \textbf{The system is supplementary and requires validation
+    before clinical deployment.}
+
+\end{enumerate}
+
+%% ------------------------------------------------------------
+
+\section{Future Work}
+
+\begin{enumerate}
+
+    \item Patient-specific calibration.
+
+    \item Improved temporal modelling.
+
+    \item Improved gaze estimation.
+
+    \item Multi-camera deployment.
+
+    \item Historical monitoring.
+
+    \item Scalable backend architecture.
+
+    \item Advanced alert prioritisation.
+
+    \item Systematic evaluation using labelled sequences.
+
+    \item Production dashboard integration.
+
+    \item Security and privacy controls.
+
+\end{enumerate}
+
+%% ------------------------------------------------------------
+
+\section{Final Remarks}
+
+The project demonstrates that a modular computer-vision system can
+transform camera observations into structured, time-aware monitoring
+information and expose that information through a backend service.
+
+The strength of the implementation lies in the integration of multiple
+processing stages rather than any single feature.
+
+The system should be considered a supplementary monitoring and
+decision-support component. Appropriate technical, clinical, privacy,
+and security validation is required before deployment in a real ICU
+environment.
+
+%% ============================================================
+%% BIBLIOGRAPHY
+%% ============================================================
+
+\printbibliography[
+    heading=bibintoc,
+    title={Bibliography}
+]
+
+%% ============================================================
+%% END
+%% ============================================================
+
+\end{document}
