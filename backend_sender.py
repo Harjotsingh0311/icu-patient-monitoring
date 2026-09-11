@@ -2,17 +2,19 @@ import threading
 import cv2
 import requests
 
+
 # ==========================================================
 # Configuration
 # ==========================================================
 
 ENABLE_BACKEND = True
 
-BACKEND_URL = "http://172.20.10.2:8000/api/face-eye/features"
-STREAM_URL = "http://172.20.10.2:8000/api/stream/face"
+BACKEND_URL = "http://127.0.0.1:8000/api/face-eye/features"
+STREAM_URL = "http://127.0.0.1:8000/api/stream/face"
 
 # Persistent HTTP session
 session = requests.Session()
+
 
 # ==========================================================
 # Clinical Feature Sender
@@ -20,22 +22,26 @@ session = requests.Session()
 
 def send_to_backend(payload):
     """
-    Sends clinical feature vectors to the backend.
-
-    Clinical packets must never be silently dropped.
+    Sends clinical feature data to the FastAPI backend.
     """
 
     if not ENABLE_BACKEND:
         return
 
     try:
-        session.post(
+        response = session.post(
             BACKEND_URL,
             json=payload,
             timeout=1.0,
         )
 
-    except Exception as e:
+        if response.status_code != 200:
+            print(
+                f"[Backend Error] "
+                f"Status: {response.status_code}"
+            )
+
+    except requests.RequestException as e:
         print(f"[Backend Error] {e}")
 
 
@@ -52,33 +58,48 @@ _frame_available = threading.Condition(_frame_lock)
 
 def _frame_sender():
     """
-    Background thread.
-
-    Waits until a new frame becomes available,
-    then uploads the latest frame to the dashboard.
+    Background thread responsible for sending
+    the latest camera frame to the dashboard.
     """
 
     global _latest_frame
 
     while True:
 
-        # Wait until producer provides a frame
+        # --------------------------------------------------
+        # Wait for a new frame
+        # --------------------------------------------------
+
         with _frame_available:
 
             while _latest_frame is None:
                 _frame_available.wait()
 
             frame = _latest_frame
+
+            # Remove reference so producer can provide
+            # the next frame.
             _latest_frame = None
+
+        # --------------------------------------------------
+        # Encode frame
+        # --------------------------------------------------
 
         try:
 
-            success, buffer = cv2.imencode(".jpg", frame)
+            success, buffer = cv2.imencode(
+                ".jpg",
+                frame
+            )
 
             if not success:
                 continue
 
-            session.post(
+            # --------------------------------------------------
+            # Send frame to backend
+            # --------------------------------------------------
+
+            response = session.post(
                 STREAM_URL,
                 files={
                     "frame": (
@@ -90,13 +111,25 @@ def _frame_sender():
                 timeout=0.2,
             )
 
-        except Exception:
-            # Streaming failures should never interrupt
-            # the clinical pipeline.
+            if response.status_code != 200:
+                print(
+                    f"[Stream Error] "
+                    f"Status: {response.status_code}"
+                )
+
+        except requests.RequestException:
+            # Video streaming is non-critical.
+            # Never stop the clinical pipeline.
             pass
 
+        except Exception as e:
+            print(f"[Stream Error] {e}")
 
-# Start exactly one sender thread
+
+# ==========================================================
+# Start Background Sender
+# ==========================================================
+
 _sender_thread = threading.Thread(
     target=_frame_sender,
     daemon=True,
@@ -105,14 +138,16 @@ _sender_thread = threading.Thread(
 _sender_thread.start()
 
 
+# ==========================================================
+# Frame Producer
+# ==========================================================
+
 def send_frame_to_backend(frame):
     """
-    Producer.
+    Called by the main Face + Eye pipeline.
 
-    Called from the main clinical pipeline.
-
-    Stores only the latest dashboard frame and wakes
-    the sender thread.
+    Only the newest frame is retained because the
+    dashboard does not need every camera frame.
     """
 
     if not ENABLE_BACKEND:
@@ -122,8 +157,8 @@ def send_frame_to_backend(frame):
 
     with _frame_available:
 
-        # Keep only the newest frame.
+        # Replace old frame with newest frame
         _latest_frame = frame.copy()
 
-        # Wake sender thread.
+        # Wake the sender thread
         _frame_available.notify()

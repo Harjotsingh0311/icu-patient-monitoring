@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>ICU Patient Monitoring Dashboard</title>
+
+    <link
+        rel="stylesheet"
+        href="/frontend/style.css"
+    >
+</head>
+
+<body>
+
+<header class="topbar">
+
+    <div>
+        <div class="eyebrow">
+            ICU MONITORING SYSTEM
+        </div>
+
+        <h1>
+            Patient Face + Eye Dashboard
+        </h1>
+    </div>
+
+    <div
+        id="connectionStatus"
+        class="status-pill"
+    >
+        <span class="dot"></span>
+        Connecting...
+    </div>
+
+</header>
+
+
+<main class="dashboard">
+
+    <!-- ================================================= -->
+    <!-- LIVE CAMERA + CURRENT STATE -->
+    <!-- ================================================= -->
+
+    <section class="hero-grid">
+
+        <div class="card video-card">
+
+            <div class="card-header">
+
+                <div>
+                    <span class="label">
+                        LIVE CAMERA
+                    </span>
+
+                    <h2>
+                        Patient View
+                    </h2>
+                </div>
+
+                <span class="live-badge">
+                    ● LIVE
+                </span>
+
+            </div>
+
+
+            <div class="video-wrap">
+
+                <img
+                    id="patientFrame"
+                    alt="Latest patient frame"
+                >
+
+                <div
+                    id="noFrame"
+                    class="no-frame"
+                >
+                    Waiting for camera frame...
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card state-card">
+
+            <div class="card-header">
+
+                <div>
+                    <span class="label">
+                        CURRENT STATE
+                    </span>
+
+                    <h2>
+                        Face + Eye Status
+                    </h2>
+                </div>
+
+            </div>
+
+
+            <div class="state-main">
+
+                <div
+                    id="stateIcon"
+                    class="state-icon"
+                >
+                    ●
+                </div>
+
+                <div>
+
+                    <div
+                        id="eyeState"
+                        class="state-value"
+                    >
+                        --
+                    </div>
+
+                    <div
+                        id="alertState"
+                        class="state-sub"
+                    >
+                        Waiting for data
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="confidence">
+
+                <div class="metric-row">
+
+                    <span>
+                        Confidence
+                    </span>
+
+                    <strong id="confidenceValue">
+                        --
+                    </strong>
+
+                </div>
+
+
+                <div class="progress">
+
+                    <div
+                        id="confidenceBar"
+                    ></div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- CLINICAL/VISION METRICS -->
+    <!-- ================================================= -->
+
+    <section class="metrics-grid">
+
+
+        <div class="metric-card card">
+
+            <span class="label">
+                LEFT EAR
+            </span>
+
+            <strong id="leftEar">
+                --
+            </strong>
+
+            <span>
+                Eye Aspect Ratio
+            </span>
+
+        </div>
+
+
+        <div class="metric-card card">
+
+            <span class="label">
+                RIGHT EAR
+            </span>
+
+            <strong id="rightEar">
+                --
+            </strong>
+
+            <span>
+                Eye Aspect Ratio
+            </span>
+
+        </div>
+
+
+        <div class="metric-card card">
+
+            <span class="label">
+                AVERAGE EAR
+            </span>
+
+            <strong id="averageEar">
+                --
+            </strong>
+
+            <span>
+                Current measurement
+            </span>
+
+        </div>
+
+
+        <div class="metric-card card">
+
+            <span class="label">
+                BLINK COUNT
+            </span>
+
+            <strong id="blinkCount">
+                --
+            </strong>
+
+            <span>
+                Detected blinks
+            </span>
+
+        </div>
+
+
+        <div class="metric-card card">
+
+            <span class="label">
+                GAZE
+            </span>
+
+            <strong id="gazeState">
+                --
+            </strong>
+
+            <span>
+                Relative gaze direction
+            </span>
+
+        </div>
+
+
+        <div class="metric-card card">
+
+            <span class="label">
+                CLOSURE
+            </span>
+
+            <strong id="closureDuration">
+                --
+            </strong>
+
+            <span>
+                Closure duration
+            </span>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- ALERT + POSTURE -->
+    <!-- ================================================= -->
+
+    <section class="lower-grid">
+
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <span class="label">
+                        ALERT MONITOR
+                    </span>
+
+                    <h2>
+                        Observation Alerts
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="alertPanel"
+                class="alert-panel normal"
+            >
+
+                <div class="alert-title">
+                    SYSTEM NORMAL
+                </div>
+
+                <div id="alertMessage">
+                    No active alert.
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <span class="label">
+                        POSTURE MODULE
+                    </span>
+
+                    <h2>
+                        Posture Data
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <pre
+                id="postureData"
+                class="json-box"
+            >{}</pre>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- RAW FUSION DATA -->
+    <!-- ================================================= -->
+
+    <section class="card raw-card">
+
+        <div class="card-header">
+
+            <div>
+
+                <span class="label">
+                    SYSTEM DATA
+                </span>
+
+                <h2>
+                    Fusion Record
+                </h2>
+
+            </div>
+
+            <span
+                id="lastUpdated"
+                class="updated"
+            >
+                Not updated
+            </span>
+
+        </div>
+
+
+        <pre
+            id="fusionData"
+            class="json-box"
+        >{}</pre>
+
+    </section>
+
+</main>
+
+
+<footer>
+
+    Face + Eye Module
+    &nbsp;•&nbsp;
+    FastAPI Backend
+    &nbsp;•&nbsp;
+    ICU Patient Monitoring System
+
+</footer>
+
+
+<script src="/frontend/app.js"></script>
+
+</body>
+
+</html>
