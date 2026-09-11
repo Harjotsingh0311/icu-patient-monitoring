@@ -1,0 +1,1070 @@
+\documentclass[12pt]{tietreport}
+
+% =========================================================
+% PACKAGES
+% =========================================================
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{xurl}
+
+% =========================================================
+% BIBLIOGRAPHY
+% =========================================================
+
+\usepackage[
+    date=year,
+    style=alphabetic,
+    backend=biber,
+    sorting=nty,
+    maxnames=5,
+    minnames=3,
+    maxalphanames=4,
+    minalphanames=3,
+    backref=true,
+    doi=false,
+    isbn=false,
+    url=false,
+    eprint=false
+]{biblatex}
+
+\addbibresource{references.bib}
+
+% =========================================================
+% DOCUMENT INFORMATION
+% =========================================================
+
+\TitlePageHeader{UCS 503 - Software Engineering}
+
+\ProjectTitle{ICU Patient Face Monitoring System}
+
+\ProjectSubTitle{
+A Computer-Vision-Based Non-Contact System for Continuous
+Facial and Ocular Monitoring of Intensive Care Unit Patients
+}
+
+\author{
+    \texttt{1024240103} Pahul Singh\\
+    \texttt{1024240039} Harjot Singh
+}
+
+\TitlePageSubText{
+    BE Third Year, Data Science and Artificial Intelligence
+}
+
+\AdvisorName{
+    Ms. Anushka, UCS 503
+}
+
+\TitlePageFooterText{
+    \large Project Proposal \\[0.2cm]
+    \bfseries Computer Science and Engineering Department\\[0.15cm]
+    Thapar Institute of Engineering and Technology, Patiala
+}
+
+% =========================================================
+% DOCUMENT
+% =========================================================
+
+\begin{document}
+
+\maketitle
+
+% =========================================================
+% TABLE OF CONTENTS
+% =========================================================
+
+\tableofcontents
+
+\newpage
+
+% =========================================================
+% CHAPTER 1
+% =========================================================
+
+\chapter{Introduction}
+
+\section{Background and Context}
+
+Intensive Care Units (ICUs) contain patients who require continuous
+observation because their physical and neurological condition can
+change rapidly. Traditional patient monitoring systems primarily
+depend on sensors attached to the patient, such as ECG electrodes,
+pulse oximeters, blood-pressure cuffs, and other clinical devices.
+Although these systems provide important physiological measurements,
+they do not directly describe visible facial and ocular behaviour.
+
+Computer vision provides a non-contact method for observing visible
+patient characteristics through a camera. A camera can capture facial
+information without requiring additional physical sensors to be
+attached to the patient's face. Facial landmarks can then be used to
+locate important regions such as the eyes and determine geometric
+features associated with eye opening, closing, blinking, and eye
+movement.
+
+Vision-based patient monitoring has been studied as a possible
+supplement to conventional monitoring systems
+\cite{bevilacqua2016visionreview,davoudi2019intelligenticu}.
+The purpose of this project is to develop a focused Face + Eye
+monitoring pipeline that converts camera frames into structured
+information that can support continuous ICU observation.
+
+The system is designed as a supplementary monitoring and
+decision-support system. It is not intended to replace medical
+professionals or provide an independent medical diagnosis.
+
+\section{Problem Statement}
+
+Continuous visual observation of an ICU patient can be difficult when
+healthcare staff must simultaneously supervise multiple patients.
+Important changes in facial and ocular behaviour may not always be
+immediately noticed.
+
+The project therefore addresses the following problem:
+
+\begin{quote}
+How can facial and eye information obtained from a standard camera
+be automatically processed into meaningful, time-based monitoring
+values and alerts for an ICU patient without requiring physical
+contact with the patient's face?
+\end{quote}
+
+The proposed system focuses specifically on the face and eye regions.
+It detects the patient's face, identifies facial and ocular landmarks,
+extracts geometric features, analyses their behaviour over time, and
+converts the resulting information into global monitoring values and
+meaningful alerts.
+
+\section{Project Objectives}
+
+The main objectives of the project are:
+
+\begin{enumerate}[leftmargin=*]
+
+    \item Detect a patient's face from a live or recorded camera
+    stream.
+
+    \item Locate facial landmarks required for accurate eye-region
+    analysis.
+
+    \item Extract landmarks corresponding to the left and right eyes.
+
+    \item Calculate geometric eye features such as the Eye Aspect
+    Ratio (EAR).
+
+    \item Identify changes in eye state over time.
+
+    \item Analyse eye closure and blinking behaviour using temporal
+    information.
+
+    \item Extract useful information related to eye movement and
+    approximate gaze behaviour where reliable landmarks are
+    available.
+
+    \item Convert frame-level measurements into stable temporal
+    values.
+
+    \item Generate global monitoring values representing the current
+    state of the facial and ocular observations.
+
+    \item Generate meaningful alerts when predefined abnormal or
+    noteworthy patterns are detected.
+
+    \item Provide processed values to the monitoring interface so that
+    the information can be displayed in an understandable form.
+
+\end{enumerate}
+
+% =========================================================
+% CHAPTER 2
+% =========================================================
+
+\chapter{Methodology and Design}
+
+\section{System Architecture}
+
+\subsection{High-Level Design}
+
+The proposed system follows a sequential computer-vision pipeline.
+The major stages are:
+
+\begin{center}
+\begin{verbatim}
+Camera / Video Input
+        |
+        v
+Video Frame Acquisition
+        |
+        v
+Face Detection
+        |
+        v
+Facial Landmark Detection
+        |
+        v
+Eye Landmark Extraction
+        |
+        v
+Eye Feature Extraction
+        |
+        v
+Temporal Processing
+        |
+        +-------------------+
+        |                   |
+        v                   v
+ Global Values          Alert Generation
+        |                   |
+        +---------+---------+
+                  |
+                  v
+        Monitoring Interface
+\end{verbatim}
+\end{center}
+
+The camera provides a continuous sequence of frames. Each frame is
+processed to locate the patient's face and facial landmarks. The eye
+landmarks are then used to calculate ocular features. These
+frame-level measurements are not directly treated as final outputs.
+Instead, they are processed over time to reduce noise and identify
+meaningful patterns.
+
+The processed information is converted into global values and alert
+states. These results are then supplied to the monitoring interface,
+where they can be presented to a user in an understandable format.
+
+\section{Technical Stack}
+
+The proposed implementation uses the following technologies:
+
+\begin{table}[H]
+\centering
+\caption{Proposed Technical Stack}
+\begin{tabular}{p{0.28\textwidth}p{0.62\textwidth}}
+\toprule
+\textbf{Technology} & \textbf{Purpose} \\
+\midrule
+Python & Main programming language for the computer-vision pipeline \\
+OpenCV & Video capture, frame processing and image operations \\
+MediaPipe Face Mesh & Facial landmark detection and face geometry \\
+NumPy & Numerical calculations and feature processing \\
+Flask/FastAPI & Optional service layer for delivering processed values \\
+Browser Interface & Display of monitoring values and alerts \\
+Git & Version control and project collaboration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+OpenCV provides a widely used computer-vision framework for image and
+video processing. MediaPipe Face Mesh provides real-time facial
+landmark information suitable for extracting geometric information
+from the face \cite{kartynnik2019facemesh,opencv,mediapipe}.
+
+\section{Implementation Methodology}
+
+\subsection{Face Detection}
+
+The first stage of the pipeline identifies the patient's face in
+each incoming frame.
+
+The face detection stage produces a region of interest containing
+the face. Processing can then be restricted primarily to this region,
+reducing unnecessary computation from the background.
+
+Traditional face detection methods such as the Viola--Jones
+framework demonstrated the possibility of real-time face detection
+using visual features and classifiers \cite{viola2004rapid}.
+Modern landmark-based approaches can provide additional geometric
+information required by the remaining stages.
+
+\subsection{Facial Landmark Detection}
+
+After locating the face, facial landmarks are detected.
+
+A facial landmark is a point corresponding to a meaningful position
+on the face. Multiple landmarks collectively describe the geometry of
+the face. The eye regions can be extracted from these landmarks.
+
+The landmark stage provides a common coordinate representation that
+can be used for further measurements instead of relying only on raw
+pixel appearance.
+
+\subsection{Eye Landmark Extraction}
+
+The left and right eye regions are extracted from the complete set of
+facial landmarks.
+
+For each eye, the relevant landmarks describe the upper eyelid,
+lower eyelid, and horizontal eye boundaries. These points provide the
+geometric information required for estimating whether the eye is
+open, partially closed, or closed.
+
+\subsection{Eye Feature Extraction}
+
+One of the primary geometric features is the Eye Aspect Ratio (EAR).
+EAR provides a numerical representation of the vertical opening of an
+eye relative to its horizontal width.
+
+For six eye landmarks, EAR can be represented as:
+
+\begin{equation}
+EAR =
+\frac{
+\left\|p_2-p_6\right\|
++
+\left\|p_3-p_5\right\|
+}{
+2\left\|p_1-p_4\right\|
+}
+\end{equation}
+
+where $p_1,\ldots,p_6$ represent selected eye landmarks and
+$\|\cdot\|$ represents Euclidean distance.
+
+When an eye is open, the vertical distances are generally larger.
+When the eye closes, these distances decrease. This makes EAR useful
+for analysing eye closure and blinking behaviour
+\cite{soukupova2016eyeblink}.
+
+\subsection{Eye-State Analysis}
+
+The calculated eye features can be converted into an eye-state
+classification.
+
+A simplified representation is:
+
+\begin{center}
+\begin{tabular}{c|c}
+\textbf{Condition} & \textbf{Possible Eye State}\\
+\hline
+EAR above threshold & Open\\
+EAR near threshold & Partially closed\\
+EAR below threshold & Closed
+\end{tabular}
+\end{center}
+
+The threshold should not be considered a universal medical value.
+It may depend on camera position, patient characteristics, lighting,
+facial orientation, and the specific implementation.
+
+\subsection{Blink Analysis}
+
+A blink can be interpreted as a short-duration transition from an
+open-eye state to a closed-eye state and then back to an open-eye
+state.
+
+The system can maintain a temporal sequence of eye states:
+
+\begin{verbatim}
+Open -> Closing -> Closed -> Opening -> Open
+\end{verbatim}
+
+This sequence can be used to identify individual blink events.
+
+The duration and frequency of such events can be calculated from the
+sequence of observations. Real-time landmark-based blink detection has
+previously been investigated using facial landmark geometry
+\cite{soukupova2016eyeblink}.
+
+\subsection{Eye Movement and Gaze Analysis}
+
+Facial and eye landmarks can also provide information about relative
+eye movement.
+
+Instead of attempting to determine an exact medical gaze direction,
+the system can represent approximate movement categories such as:
+
+\begin{itemize}[leftmargin=*]
+    \item left,
+    \item right,
+    \item upward,
+    \item downward,
+    \item approximately centred,
+    \item uncertain.
+\end{itemize}
+
+The reliability of this information depends on camera placement,
+head orientation, illumination, eyelid visibility, and landmark
+quality.
+
+\subsection{Temporal Processing}
+
+Frame-by-frame measurements can be noisy. A single incorrect
+landmark position should therefore not immediately generate an alert.
+
+The system maintains a short temporal history of observations.
+
+For a sequence:
+
+\[
+x_1,x_2,\ldots,x_n
+\]
+
+a simple moving average can be calculated as:
+
+\begin{equation}
+\bar{x}_t =
+\frac{1}{N}
+\sum_{i=0}^{N-1}x_{t-i}
+\end{equation}
+
+where $N$ is the number of recent observations.
+
+Temporal processing can therefore make the output more stable and
+reduce false alerts caused by individual noisy frames.
+
+\subsection{Global Value Generation}
+
+The system converts multiple low-level measurements into a smaller
+set of global monitoring values.
+
+Examples include:
+
+\begin{itemize}[leftmargin=*]
+    \item current eye state,
+    \item left-eye EAR,
+    \item right-eye EAR,
+    \item average EAR,
+    \item blink count,
+    \item recent blink frequency,
+    \item eye-closure duration,
+    \item approximate gaze state,
+    \item confidence or validity state,
+    \item current alert state.
+\end{itemize}
+
+These values provide a compact representation of the patient's
+recent facial and ocular observations.
+
+\subsection{Alert Generation}
+
+Alerts are generated from processed temporal values rather than
+individual raw frames.
+
+For example, if the eye remains below the closure threshold for a
+predefined period, the system can generate a prolonged-eye-closure
+alert.
+
+A conceptual rule is:
+
+\begin{equation}
+Alert =
+\begin{cases}
+1, & \text{if closure duration} > T_c\\
+0, & \text{otherwise}
+\end{cases}
+\end{equation}
+
+where $T_c$ represents a configurable duration threshold.
+
+Similarly, abnormal or noteworthy changes in blink behaviour can be
+represented by additional rules.
+
+These alerts are intended to act as supplementary monitoring
+indicators rather than clinical diagnoses.
+
+% =========================================================
+% CHAPTER 3
+% =========================================================
+
+\chapter{System Requirements}
+
+\section{Hardware Requirements}
+
+The proposed system requires:
+
+\begin{itemize}[leftmargin=*]
+    \item A standard RGB camera or webcam.
+    \item A computer or workstation capable of real-time video
+    processing.
+    \item Sufficient RAM for the operating system and computer-vision
+    pipeline.
+    \item Optional GPU acceleration for higher-resolution or
+    multi-stream processing.
+    \item Stable camera positioning near the patient's bed.
+\end{itemize}
+
+\section{Software Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Software Requirements}
+\begin{tabular}{p{0.30\textwidth}p{0.58\textwidth}}
+\toprule
+\textbf{Component} & \textbf{Requirement} \\
+\midrule
+Operating System & Windows/Linux/macOS or equivalent environment \\
+Programming Language & Python \\
+Computer Vision & OpenCV \\
+Landmark Detection & MediaPipe Face Mesh \\
+Numerical Processing & NumPy \\
+Backend & Flask or FastAPI, if required \\
+Interface & Browser-based monitoring interface \\
+Version Control & Git \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Functional Requirements}
+
+The system shall:
+
+\begin{enumerate}[leftmargin=*]
+    \item Accept live or recorded video input.
+    \item Detect the patient's face.
+    \item Detect facial landmarks.
+    \item Identify eye landmarks.
+    \item Calculate eye-related geometric features.
+    \item Estimate eye state.
+    \item Detect blink events.
+    \item Maintain temporal information.
+    \item Calculate global monitoring values.
+    \item Generate configurable alerts.
+    \item Make processed values available to the monitoring interface.
+\end{enumerate}
+
+\section{Non-Functional Requirements}
+
+\subsection{Real-Time Performance}
+
+The pipeline should process frames with sufficiently low latency for
+continuous monitoring. The target is to maintain approximately
+15 frames per second or higher where the available hardware permits.
+
+\subsection{Reliability}
+
+The system should tolerate temporary landmark loss, lighting
+variation, and small head movements without crashing or generating
+continuous false alerts.
+
+\subsection{Accuracy}
+
+The system should be evaluated using labelled video sequences and
+appropriate metrics rather than assuming that every detected
+condition is correct.
+
+\subsection{Maintainability}
+
+The face detection, eye analysis, temporal processing, alert
+generation, and interface communication components should remain
+modular so that individual components can be improved independently.
+
+\subsection{Privacy}
+
+Patient video represents sensitive information. The system should
+prefer local processing where possible and should avoid unnecessary
+storage or transmission of raw video.
+
+% =========================================================
+% CHAPTER 4
+% =========================================================
+
+\chapter{Data Processing and Alert System}
+
+\section{Data Flow}
+
+The complete data flow can be represented as:
+
+\begin{center}
+\begin{verbatim}
+RAW VIDEO
+   |
+   v
+Frame Acquisition
+   |
+   v
+Face Detection
+   |
+   v
+Facial Landmarks
+   |
+   v
+Eye Landmarks
+   |
+   v
+Geometric Features
+   |
+   v
+Temporal Processing
+   |
+   +--------------------+
+   |                    |
+   v                    v
+Global Values       Alert Engine
+   |                    |
+   +---------+----------+
+             |
+             v
+      Monitoring Interface
+\end{verbatim}
+\end{center}
+
+\section{Raw Data}
+
+Raw input consists primarily of camera frames.
+
+Each frame contains pixel information representing the patient's
+visible face and surrounding environment.
+
+Raw frames may also contain irrelevant information such as:
+
+\begin{itemize}[leftmargin=*]
+    \item background objects,
+    \item bedding,
+    \item medical equipment,
+    \item other visual noise.
+\end{itemize}
+
+The processing pipeline therefore extracts only the information
+needed for face and eye monitoring.
+
+\section{Extracted Data}
+
+The face and landmark stages produce structured information such as:
+
+\begin{itemize}[leftmargin=*]
+    \item face location,
+    \item facial landmark coordinates,
+    \item eye landmark coordinates,
+    \item eye-region geometry,
+    \item detection confidence or validity information.
+\end{itemize}
+
+This information is significantly smaller and more structured than
+the original video frame.
+
+\section{Processed Data}
+
+The extracted measurements are processed to generate:
+
+\begin{itemize}[leftmargin=*]
+    \item left-eye EAR,
+    \item right-eye EAR,
+    \item average eye opening,
+    \item eye state,
+    \item blink events,
+    \item closure duration,
+    \item temporal statistics,
+    \item approximate eye movement,
+    \item confidence information.
+\end{itemize}
+
+Temporal processing is important because an individual frame may
+contain an incorrect or incomplete observation.
+
+\section{Global Values}
+
+Global values summarize the current condition of the Face + Eye
+pipeline.
+
+A possible global monitoring record can be represented as:
+
+\begin{verbatim}
+{
+    eye_state,
+    left_ear,
+    right_ear,
+    average_ear,
+    blink_count,
+    closure_duration,
+    gaze_state,
+    confidence,
+    alert_state
+}
+\end{verbatim}
+
+The exact set of fields can be changed according to the final
+implementation.
+
+\section{Meaningful Alerts}
+
+The purpose of the alert system is to convert numerical measurements
+into understandable monitoring information.
+
+Possible alert categories include:
+
+\begin{table}[H]
+\centering
+\caption{Example Alert Categories}
+\begin{tabular}{p{0.30\textwidth}p{0.55\textwidth}}
+\toprule
+\textbf{Alert} & \textbf{Meaning} \\
+\midrule
+Prolonged Eye Closure & Eye closure persists beyond a configurable duration \\
+Repeated Closure & Frequent closure events are observed in a recent time window \\
+Unusual Blink Pattern & Blink behaviour differs from a configured baseline or rule \\
+Low Confidence & Face or eye landmarks are unreliable \\
+Face Not Detected & The patient's face cannot currently be located \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Alerts should contain both the event and sufficient context for a
+user to understand why the alert was produced.
+
+% =========================================================
+% CHAPTER 5
+% =========================================================
+
+\chapter{Expected Results}
+
+\section{Expected Processing Output}
+
+The expected output of the Face + Eye pipeline is a continuously
+updated collection of structured monitoring values.
+
+For every processed observation, the system should be able to provide
+information similar to:
+
+\begin{table}[H]
+\centering
+\caption{Expected Monitoring Output}
+\begin{tabular}{p{0.32\textwidth}p{0.50\textwidth}}
+\toprule
+\textbf{Output} & \textbf{Description} \\
+\midrule
+Face Status & Whether a usable face is currently detected \\
+Eye State & Open, partially closed, closed, or uncertain \\
+EAR & Numerical measure of eye opening \\
+Blink Information & Detection/count of blink events \\
+Closure Duration & Duration of continuous or recent closure \\
+Gaze State & Approximate relative eye movement state \\
+Confidence & Reliability of the current observation \\
+Alert & Current meaningful monitoring alert \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The final processed values are intended to be sent to the monitoring
+interface. The interface can then convert these values into
+readable indicators, status cards, charts, or alerts.
+
+% =========================================================
+% CHAPTER 6
+% =========================================================
+
+\chapter{Applications}
+
+The proposed Face + Eye monitoring system may be useful in:
+
+\begin{enumerate}[leftmargin=*]
+
+    \item \textbf{ICU Monitoring:}
+    Supplementary observation of facial and ocular behaviour.
+
+    \item \textbf{Continuous Observation:}
+    Automated monitoring can provide a persistent stream of
+    computer-generated observations.
+
+    \item \textbf{Remote Monitoring:}
+    Processed values may be made available to an authorised
+    monitoring interface.
+
+    \item \textbf{Research:}
+    The system can provide structured facial and eye measurements
+    for research involving patient behaviour.
+
+    \item \textbf{Alert Support:}
+    The system can highlight potentially noteworthy changes for
+    further human attention.
+
+\end{enumerate}
+
+The system should always be treated as a supplementary tool and not
+as a replacement for professional medical judgement.
+
+% =========================================================
+% CHAPTER 7
+% =========================================================
+
+\chapter{Advantages and Limitations}
+
+\section{Advantages}
+
+\begin{itemize}[leftmargin=*]
+
+    \item \textbf{Non-contact:}
+    No physical sensor is required on the patient's face.
+
+    \item \textbf{Continuous:}
+    Video can be processed continuously rather than through
+    occasional manual observations.
+
+    \item \textbf{Automated:}
+    Facial and ocular measurements can be calculated automatically.
+
+    \item \textbf{Structured Output:}
+    Raw visual information is converted into numerical values and
+    understandable alerts.
+
+    \item \textbf{Modular:}
+    Individual processing stages can be independently improved.
+
+    \item \textbf{Interface Integration:}
+    Processed global values can be supplied to a monitoring
+    interface.
+
+\end{itemize}
+
+\section{Limitations}
+
+The system has several limitations:
+
+\begin{itemize}[leftmargin=*]
+
+    \item Poor illumination can reduce landmark accuracy.
+
+    \item Significant head rotation can make eye landmarks unreliable.
+
+    \item Occlusion caused by blankets, equipment, hands, or other
+    objects can interfere with detection.
+
+    \item Camera placement affects the quality of measurements.
+
+    \item Individual differences in facial structure can affect
+    threshold-based eye-state classification.
+
+    \item A computer-vision alert does not necessarily indicate a
+    medical emergency.
+
+    \item Raw video may contain sensitive patient information and
+    therefore requires appropriate privacy controls.
+
+\end{itemize}
+
+% =========================================================
+% CHAPTER 8
+% =========================================================
+
+\chapter{Testing and Evaluation}
+
+\section{Testing Methodology}
+
+The system should be evaluated component by component before
+performing complete end-to-end testing.
+
+\subsection{Face Detection Testing}
+
+Face detection should be tested under:
+
+\begin{itemize}[leftmargin=*]
+    \item different lighting conditions,
+    \item different face orientations,
+    \item different distances from the camera,
+    \item partial occlusion,
+    \item periods of temporary detection failure.
+\end{itemize}
+
+\subsection{Eye Detection Testing}
+
+Eye landmarks should be evaluated for:
+
+\begin{itemize}[leftmargin=*]
+    \item open eyes,
+    \item closed eyes,
+    \item blinking,
+    \item partially visible eyes,
+    \item head movement,
+    \item varying illumination.
+\end{itemize}
+
+\subsection{Feature Testing}
+
+EAR calculations should be checked against manually labelled eye
+states.
+
+The calculated values should behave consistently with the expected
+geometric changes of the eye.
+
+\subsection{Temporal Testing}
+
+Temporal processing should be tested using sequences containing:
+
+\begin{itemize}[leftmargin=*]
+    \item normal eye opening,
+    \item individual blinks,
+    \item multiple blinks,
+    \item prolonged closure,
+    \item temporary landmark loss.
+\end{itemize}
+
+\subsection{Alert Testing}
+
+Alert generation should be evaluated using controlled test
+sequences.
+
+The test should determine whether:
+
+\begin{enumerate}[leftmargin=*]
+    \item valid events generate alerts,
+    \item normal observations avoid unnecessary alerts,
+    \item temporary detection errors do not create excessive alerts,
+    \item alert states return to normal when the condition ends.
+\end{enumerate}
+
+\subsection{End-to-End Testing}
+
+Finally, the complete system should be tested from camera input to
+monitoring interface.
+
+The complete path is:
+
+\begin{center}
+\begin{verbatim}
+Camera
+  -> Frame
+  -> Face
+  -> Landmarks
+  -> Eye Features
+  -> Temporal Processing
+  -> Global Values
+  -> Alerts
+  -> Monitoring Interface
+\end{verbatim}
+\end{center}
+
+\section{Evaluation Metrics}
+
+The following metrics can be used during evaluation:
+
+\begin{table}[H]
+\centering
+\caption{Proposed Evaluation Metrics}
+\begin{tabular}{p{0.30\textwidth}p{0.55\textwidth}}
+\toprule
+\textbf{Metric} & \textbf{Purpose} \\
+\midrule
+Detection Accuracy & Measures correct face/eye detections \\
+Precision & Measures proportion of predicted events that are correct \\
+Recall & Measures proportion of actual events that are detected \\
+F1 Score & Balances precision and recall \\
+Latency & Measures processing delay \\
+FPS & Measures real-time processing throughput \\
+False Alert Rate & Measures unnecessary alerts \\
+Miss Rate & Measures important events that were not detected \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The project may use targets such as:
+
+\begin{itemize}[leftmargin=*]
+    \item latency below approximately 50 ms per processing step where
+    hardware permits,
+    \item face detection accuracy above 95\% on the selected test
+    data,
+    \item blink detection accuracy above 90\% on labelled sequences,
+    \item processing throughput of at least approximately 15 FPS.
+\end{itemize}
+
+These values are proposed evaluation targets and should not be
+presented as achieved performance until experimental testing has
+confirmed them.
+
+% =========================================================
+% CHAPTER 9
+% =========================================================
+
+\chapter{Project Timeline}
+
+\begin{table}[H]
+\centering
+\caption{Proposed Project Timeline}
+\begin{tabular}{p{0.20\textwidth}p{0.62\textwidth}}
+\toprule
+\textbf{Phase} & \textbf{Work} \\
+\midrule
+Phase 1 & Requirement analysis and literature review \\
+Phase 2 & Camera input and face detection \\
+Phase 3 & Facial and eye landmark extraction \\
+Phase 4 & Eye feature calculation and state analysis \\
+Phase 5 & Temporal processing and blink analysis \\
+Phase 6 & Global value and alert generation \\
+Phase 7 & Monitoring interface integration \\
+Phase 8 & Testing, evaluation and documentation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The phases can overlap where appropriate. For example, interface
+development can proceed while the computer-vision pipeline is being
+tested.
+
+% =========================================================
+% CHAPTER 10
+% =========================================================
+
+\chapter{Future Scope}
+
+Future development can extend the system in several directions.
+
+\begin{enumerate}[leftmargin=*]
+
+    \item \textbf{Improved Personalisation:}
+    Patient-specific baselines could be used instead of relying only
+    on fixed thresholds.
+
+    \item \textbf{Advanced Temporal Models:}
+    Machine-learning models could be used to identify more complex
+    temporal patterns.
+
+    \item \textbf{Multi-Camera Monitoring:}
+    Multiple camera views could improve robustness against
+    occlusion and head rotation.
+
+    \item \textbf{Improved Gaze Estimation:}
+    More sophisticated methods could provide more reliable relative
+    gaze information.
+
+    \item \textbf{Better Uncertainty Handling:}
+    Confidence-aware processing could prevent unreliable frames from
+    influencing alerts.
+
+    \item \textbf{Historical Analysis:}
+    Processed global values could be stored securely to allow
+    authorised users to examine trends over time.
+
+    \item \textbf{Scalable Deployment:}
+    The system could be extended to support multiple patient
+    monitoring streams.
+
+\end{enumerate}
+
+% =========================================================
+% CHAPTER 11
+% =========================================================
+
+\chapter{Conclusion}
+
+This project proposes a computer-vision-based Face + Eye monitoring
+system for continuous, non-contact observation of ICU patients.
+
+The proposed pipeline begins with camera input and proceeds through
+face detection, facial landmark detection, eye landmark extraction,
+eye feature calculation, and temporal processing. The resulting
+information is converted into global monitoring values and meaningful
+alerts.
+
+The final processed information can then be provided to a monitoring
+interface so that complex computer-vision measurements are presented
+in a simple and understandable form.
+
+The system is intended to supplement existing patient monitoring
+rather than replace healthcare professionals. Its usefulness will
+ultimately depend on the quality of the camera input, robustness of
+landmark detection, accuracy of temporal analysis, appropriate
+threshold selection, and systematic experimental evaluation.
+
+% =========================================================
+% REFERENCES
+% =========================================================
+
+\printbibliography
+
+\end{document}
